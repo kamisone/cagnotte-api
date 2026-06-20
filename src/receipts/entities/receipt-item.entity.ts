@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  AfterLoad,
 } from 'typeorm';
 import { Receipt } from './receipt.entity';
 
@@ -30,4 +31,9 @@ export class ReceiptItem {
 
   @Column()
   receiptId: string;
+
+  @AfterLoad()
+  parseDecimals() {
+    this.price = parseFloat(this.price as any);
+  }
 }

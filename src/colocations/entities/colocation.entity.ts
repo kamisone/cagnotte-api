@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  AfterLoad,
 } from 'typeorm';
 
 @Entity('colocations')
@@ -24,4 +25,9 @@ export class Colocation {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @AfterLoad()
+  parseDecimals() {
+    this.contributionAmount = parseFloat(this.contributionAmount as any);
+  }
 }

@@ -29,11 +29,6 @@ spec:
                 secretKeyRef:
                   name: api-envs
                   key: NODE_ENV 
-            - name: ALLOWED_ORIGINS
-              valueFrom:
-                secretKeyRef:
-                  name: api-envs
-                  key: ALLOWED_ORIGINS 
             - name:  API_PORT
               valueFrom:
                 secretKeyRef:

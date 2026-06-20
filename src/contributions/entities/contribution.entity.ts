@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  AfterLoad,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Colocation } from '../../colocations/entities/colocation.entity';
@@ -38,4 +39,9 @@ export class Contribution {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @AfterLoad()
+  parseDecimals() {
+    this.amount = parseFloat(this.amount as any);
+  }
 }

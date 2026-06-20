@@ -7,9 +7,11 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -25,7 +27,8 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const plainPassword = dto.password ?? crypto.randomBytes(9).toString('base64url');
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
     const initial = dto.name[0].toUpperCase();
 
     const user = await this.usersService.create({
@@ -37,8 +40,11 @@ export class AuthService {
       initial,
     });
 
-    const tokens = await this.generateTokens(user.id, user.email);
-    return tokens;
+    const { password, refreshToken, ...profile } = user;
+    return {
+      user: profile,
+      generatedPassword: dto.password ? null : plainPassword,
+    };
   }
 
   async login(dto: LoginDto) {
@@ -54,6 +60,21 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user.id, user.email);
     return tokens;
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const passwordValid = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!passwordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+    await this.usersService.updatePassword(userId, hashedPassword);
   }
 
   async refreshTokens(userId: string, refreshToken: string) {

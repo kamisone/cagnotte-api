@@ -29,6 +29,9 @@ export class User {
   @Column({ length: 2 })
   initial: string;
 
+  @Column({ default: false })
+  isAdmin: boolean;
+
   @Column({ nullable: true })
   refreshToken: string;
 

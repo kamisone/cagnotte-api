@@ -3,7 +3,9 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 
@@ -14,6 +16,7 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
@@ -26,7 +29,6 @@ export class AuthController {
 
   @Post('refresh')
   async refresh(@Body() dto: RefreshTokenDto) {
-    // Decode the refresh token to get userId
     const payload = JSON.parse(
       Buffer.from(dto.refreshToken.split('.')[1], 'base64').toString(),
     );
@@ -34,9 +36,19 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  async changePassword(
+    @CurrentUser() user: { id: string; email: string },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.authService.changePassword(user.id, dto);
+    return { message: 'Password changed successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('me')
-  async getProfile(@CurrentUser() user: { userId: string; email: string }) {
-    const fullUser = await this.usersService.findById(user.userId);
+  async getProfile(@CurrentUser() user: { id: string; email: string }) {
+    const fullUser = await this.usersService.findById(user.id);
     if (!fullUser) {
       return null;
     }

@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  AfterLoad,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Colocation } from '../../colocations/entities/colocation.entity';
@@ -50,4 +51,9 @@ export class Receipt {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @AfterLoad()
+  parseDecimals() {
+    this.totalAmount = parseFloat(this.totalAmount as any);
+  }
 }

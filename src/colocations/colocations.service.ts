@@ -55,7 +55,7 @@ export class ColocationsService {
     return savedColocation;
   }
 
-  async findByUser(userId: string): Promise<Colocation & { members: ColocationMember[] }> {
+  async findByUser(userId: string) {
     const membership = await this.memberRepository.findOne({
       where: { userId },
       relations: ['colocation'],
@@ -67,9 +67,16 @@ export class ColocationsService {
 
     const members = await this.memberRepository.find({
       where: { colocationId: membership.colocationId },
+      relations: ['user'],
     });
 
-    return { ...membership.colocation, members };
+    const balance = await this.getBalance(membership.colocationId);
+
+    return {
+      colocation: membership.colocation,
+      members,
+      balance,
+    };
   }
 
   async join(userId: string, inviteCode: string): Promise<ColocationMember> {
@@ -94,7 +101,7 @@ export class ColocationsService {
     return this.memberRepository.save(member);
   }
 
-  async getBalance(colocationId: string): Promise<{ balance: number }> {
+  async getBalance(colocationId: string) {
     const contributionsResult = await this.contributionRepository
       .createQueryBuilder('c')
       .select('COALESCE(SUM(c.amount), 0)', 'total')
@@ -107,10 +114,14 @@ export class ColocationsService {
       .where('r.colocationId = :colocationId', { colocationId })
       .getRawOne();
 
-    const totalContributions = parseFloat(contributionsResult.total);
-    const totalReceipts = parseFloat(receiptsResult.total);
+    const totalContributed = parseFloat(contributionsResult.total);
+    const totalSpent = parseFloat(receiptsResult.total);
 
-    return { balance: totalContributions - totalReceipts };
+    return {
+      balance: totalContributed - totalSpent,
+      totalContributed,
+      totalSpent,
+    };
   }
 
   async getMembers(colocationId: string): Promise<ColocationMember[]> {

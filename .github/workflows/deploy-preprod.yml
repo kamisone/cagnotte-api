@@ -70,7 +70,8 @@ jobs:
             --from-literal JWT_SECRET=${{ secrets.JWT_SECRET }} \
             --from-literal JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
             --from-literal ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
-            --from-literal ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            --from-literal ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
+            --from-literal REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
             kubectl apply -f /srv/k8s/api
             minikube addons enable ingress
             echo ${{ secrets.SERVER_SECOND_USER_PASSWORD }} | sudo -S systemctl restart nginx

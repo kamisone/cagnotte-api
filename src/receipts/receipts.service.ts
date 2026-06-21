@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Receipt } from './entities/receipt.entity';
 import { ReceiptItem } from './entities/receipt-item.entity';
-import { Contribution } from '../contributions/entities/contribution.entity';
+import { Colocation } from '../colocations/entities/colocation.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
@@ -15,8 +15,8 @@ export class ReceiptsService {
     private readonly receiptRepository: Repository<Receipt>,
     @InjectRepository(ReceiptItem)
     private readonly receiptItemRepository: Repository<ReceiptItem>,
-    @InjectRepository(Contribution)
-    private readonly contributionRepository: Repository<Contribution>,
+    @InjectRepository(Colocation)
+    private readonly colocationRepository: Repository<Colocation>,
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
   ) {}
@@ -39,35 +39,10 @@ export class ReceiptsService {
     });
 
     const saved = await this.receiptRepository.save(receipt);
-    // Reload with eager relations (save() does not hydrate them)
     const hydrated = await this.receiptRepository.findOneOrFail({ where: { id: saved.id } });
 
-    // Compute balance after receipt creation
-    const contributionsResult = await this.contributionRepository
-      .createQueryBuilder('c')
-      .select('COALESCE(SUM(c.amount), 0)', 'total')
-      .where('c.colocationId = :colocationId', {
-        colocationId: dto.colocationId,
-      })
-      .getRawOne();
-
-    const receiptsResult = await this.receiptRepository
-      .createQueryBuilder('r')
-      .select('COALESCE(SUM(r.totalAmount), 0)', 'total')
-      .where('r.colocationId = :colocationId', {
-        colocationId: dto.colocationId,
-      })
-      .getRawOne();
-
-    const balance =
-      parseFloat(contributionsResult.total) -
-      parseFloat(receiptsResult.total);
-
-    if (balance <= 0) {
-      await this.notificationsService.createFundEmptyNotification(
-        dto.colocationId,
-      );
-    }
+    // Check spending gap between tenants
+    await this.checkSpendingGap(dto.colocationId);
 
     await this.notificationsService.createForAllMembers(
       dto.colocationId,
@@ -77,6 +52,28 @@ export class ReceiptsService {
     );
 
     return this.withSignedPhotoUrl(hydrated);
+  }
+
+  private async checkSpendingGap(colocationId: string): Promise<void> {
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation || colocation.spendingGapThreshold <= 0) return;
+
+    const spendingPerUser = await this.receiptRepository
+      .createQueryBuilder('r')
+      .select('r.userId', 'userId')
+      .addSelect('COALESCE(SUM(r.totalAmount), 0)', 'total')
+      .where('r.colocationId = :colocationId', { colocationId })
+      .groupBy('r.userId')
+      .getRawMany();
+
+    if (spendingPerUser.length < 2) return;
+
+    const amounts = spendingPerUser.map((r) => parseFloat(r.total));
+    const gap = Math.max(...amounts) - Math.min(...amounts);
+
+    if (gap > colocation.spendingGapThreshold) {
+      await this.notificationsService.createSpendingGapNotification(colocationId, gap);
+    }
   }
 
   private async withSignedPhotoUrl(receipt: Receipt): Promise<Receipt> {
@@ -108,7 +105,6 @@ export class ReceiptsService {
   }
 
   async getStats(colocationId: string) {
-    // Total spent
     const totalResult = await this.receiptRepository
       .createQueryBuilder('r')
       .select('COALESCE(SUM(r.totalAmount), 0)', 'totalSpent')
@@ -117,7 +113,6 @@ export class ReceiptsService {
 
     const totalSpent = parseFloat(totalResult.totalSpent);
 
-    // By category
     const byCategoryRaw = await this.receiptItemRepository
       .createQueryBuilder('ri')
       .innerJoin('ri.receipt', 'r')
@@ -133,7 +128,6 @@ export class ReceiptsService {
       fraction: totalSpent > 0 ? parseFloat(row.amount) / totalSpent : 0,
     }));
 
-    // By roommate — join user table to return the full user object
     const byRoommateRaw = await this.receiptRepository
       .createQueryBuilder('r')
       .innerJoin('r.user', 'u')

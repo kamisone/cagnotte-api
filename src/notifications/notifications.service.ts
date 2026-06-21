@@ -53,11 +53,12 @@ export class NotificationsService {
     await this.notificationRepository.save(notifications);
   }
 
-  async createFundEmptyNotification(colocationId: string): Promise<void> {
+  async createSpendingGapNotification(colocationId: string, gap: number): Promise<void> {
+    const gapFormatted = gap.toFixed(2).replace('.', ',');
     await this.createForAllMembers(
       colocationId,
-      'fund_empty',
-      'La cagnotte est vide ! Il est temps de contribuer.',
+      'spending_gap',
+      `Attention : l'écart de dépenses entre colocataires est de ${gapFormatted} €. Une rééquilibration s'impose !`,
     );
   }
 }

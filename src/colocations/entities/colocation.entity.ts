@@ -14,24 +14,17 @@ export class Colocation {
   @Column()
   name: string;
 
-  @Column('decimal', { precision: 10, scale: 2, default: 5.0 })
-  contributionAmount: number;
-
   @Column({ unique: true })
   inviteCode: string;
 
-  @Column({ default: 1 })
-  currentCycle: number;
-
-  @Column('decimal', { precision: 10, scale: 2, default: 10.0 })
-  lowBalanceThreshold: number;
+  @Column('decimal', { precision: 10, scale: 2, default: 50.0 })
+  spendingGapThreshold: number;
 
   @CreateDateColumn()
   createdAt: Date;
 
   @AfterLoad()
   parseDecimals() {
-    this.contributionAmount = parseFloat(this.contributionAmount as any);
-    this.lowBalanceThreshold = parseFloat(this.lowBalanceThreshold as any);
+    this.spendingGapThreshold = parseFloat(this.spendingGapThreshold as any);
   }
 }

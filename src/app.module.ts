@@ -6,7 +6,6 @@ import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ColocationsModule } from './colocations/colocations.module';
-import { ContributionsModule } from './contributions/contributions.module';
 import { ShoppingModule } from './shopping/shopping.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { RotationsModule } from './rotations/rotations.module';
@@ -33,7 +32,6 @@ import { CatalogModule } from './catalog/catalog.module';
     UsersModule,
     AuthModule,
     ColocationsModule,
-    ContributionsModule,
     ShoppingModule,
     ReceiptsModule,
     RotationsModule,

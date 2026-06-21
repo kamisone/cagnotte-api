@@ -40,12 +40,6 @@ export class ColocationsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get(':id/balance')
-  getBalance(@Param('id') id: string) {
-    return this.colocationsService.getBalance(id);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
     @CurrentUser() user: any,

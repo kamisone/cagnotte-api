@@ -10,8 +10,6 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { Colocation } from './entities/colocation.entity';
 import { ColocationMember } from './entities/colocation-member.entity';
-import { Contribution } from '../contributions/entities/contribution.entity';
-import { Receipt } from '../receipts/entities/receipt.entity';
 import { CreateColocationDto } from './dto/create-colocation.dto';
 import { UpdateColocationDto } from './dto/update-colocation.dto';
 import { UsersService } from '../users/users.service';
@@ -25,10 +23,6 @@ export class ColocationsService {
     private readonly colocationRepository: Repository<Colocation>,
     @InjectRepository(ColocationMember)
     private readonly memberRepository: Repository<ColocationMember>,
-    @InjectRepository(Contribution)
-    private readonly contributionRepository: Repository<Contribution>,
-    @InjectRepository(Receipt)
-    private readonly receiptRepository: Repository<Receipt>,
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
   ) {}
@@ -48,7 +42,6 @@ export class ColocationsService {
   ): Promise<Colocation> {
     const colocation = this.colocationRepository.create({
       name: dto.name,
-      contributionAmount: dto.contributionAmount ?? 5.0,
       inviteCode: this.generateInviteCode(),
     });
 
@@ -79,12 +72,9 @@ export class ColocationsService {
       relations: ['user'],
     });
 
-    const balance = await this.getBalance(membership.colocationId);
-
     return {
       colocation: membership.colocation,
       members,
-      balance,
     };
   }
 
@@ -117,29 +107,6 @@ export class ColocationsService {
     return this.authService.generateTokens(user.id, guestEmail);
   }
 
-  async getBalance(colocationId: string) {
-    const contributionsResult = await this.contributionRepository
-      .createQueryBuilder('c')
-      .select('COALESCE(SUM(c.amount), 0)', 'total')
-      .where('c.colocationId = :colocationId', { colocationId })
-      .getRawOne();
-
-    const receiptsResult = await this.receiptRepository
-      .createQueryBuilder('r')
-      .select('COALESCE(SUM(r.totalAmount), 0)', 'total')
-      .where('r.colocationId = :colocationId', { colocationId })
-      .getRawOne();
-
-    const totalContributed = parseFloat(contributionsResult.total);
-    const totalSpent = parseFloat(receiptsResult.total);
-
-    return {
-      balance: totalContributed - totalSpent,
-      totalContributed,
-      totalSpent,
-    };
-  }
-
   async getMembers(colocationId: string): Promise<ColocationMember[]> {
     return this.memberRepository.find({
       where: { colocationId },
@@ -162,8 +129,7 @@ export class ColocationsService {
     if (!colocation) throw new NotFoundException('Colocation not found');
 
     if (dto.name !== undefined) colocation.name = dto.name;
-    if (dto.contributionAmount !== undefined) colocation.contributionAmount = dto.contributionAmount;
-    if (dto.lowBalanceThreshold !== undefined) colocation.lowBalanceThreshold = dto.lowBalanceThreshold;
+    if (dto.spendingGapThreshold !== undefined) colocation.spendingGapThreshold = dto.spendingGapThreshold;
 
     return this.colocationRepository.save(colocation);
   }

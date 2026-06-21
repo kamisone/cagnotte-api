@@ -6,11 +6,13 @@ import { Contribution } from '../contributions/entities/contribution.entity';
 import { ReceiptsService } from './receipts.service';
 import { ReceiptsController } from './receipts.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Receipt, ReceiptItem, Contribution]),
     forwardRef(() => NotificationsModule),
+    StorageModule,
   ],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],

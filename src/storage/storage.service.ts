@@ -55,6 +55,29 @@ export class StorageService {
     return { uploadUrl, publicUrl, key };
   }
 
+  async signedReadUrl(
+    key: string,
+    expiresInMs = 60 * 60 * 1000, // 1 hour
+  ): Promise<string> {
+    const file = this.storage.bucket(this.bucketName).file(key);
+    const [url] = await file.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + expiresInMs,
+    });
+    return url;
+  }
+
+  // Extract the GCS object key from a stored public URL.
+  // e.g. "https://storage.googleapis.com/silomis_local/receipts/user/file.jpg"
+  //   → "receipts/user/file.jpg"
+  extractKey(publicUrl: string): string {
+    return publicUrl.replace(
+      /^https:\/\/storage\.googleapis\.com\/[^/]+\//,
+      '',
+    );
+  }
+
   async deleteFile(key: string): Promise<void> {
     try {
       await this.storage.bucket(this.bucketName).file(key).delete();

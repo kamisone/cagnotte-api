@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Receipt } from './entities/receipt.entity';
@@ -6,6 +6,7 @@ import { ReceiptItem } from './entities/receipt-item.entity';
 import { Contribution } from '../contributions/entities/contribution.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class ReceiptsService {
@@ -17,6 +18,7 @@ export class ReceiptsService {
     @InjectRepository(Contribution)
     private readonly contributionRepository: Repository<Contribution>,
     private readonly notificationsService: NotificationsService,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(userId: string, dto: CreateReceiptDto): Promise<Receipt> {
@@ -73,14 +75,26 @@ export class ReceiptsService {
       userId,
     );
 
-    return hydrated;
+    return this.withSignedPhotoUrl(hydrated);
+  }
+
+  private async withSignedPhotoUrl(receipt: Receipt): Promise<Receipt> {
+    if (!receipt.photoUrl) return receipt;
+    try {
+      const key = this.storageService.extractKey(receipt.photoUrl);
+      receipt.photoUrl = await this.storageService.signedReadUrl(key);
+    } catch {
+      // fall back to stored URL on signing failure
+    }
+    return receipt;
   }
 
   async findByColocation(colocationId: string): Promise<Receipt[]> {
-    return this.receiptRepository.find({
+    const receipts = await this.receiptRepository.find({
       where: { colocationId },
       order: { date: 'DESC' },
     });
+    return Promise.all(receipts.map((r) => this.withSignedPhotoUrl(r)));
   }
 
   async getStats(colocationId: string) {

@@ -5,6 +5,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
+import { UpdateNameDto } from './dto/update-name.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
@@ -51,6 +52,15 @@ export class AuthController {
     @Body() dto: CompleteProfileDto,
   ) {
     return this.authService.completeProfile(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  async updateName(
+    @CurrentUser() user: { id: string },
+    @Body() dto: UpdateNameDto,
+  ) {
+    return this.authService.updateName(user.id, dto.name);
   }
 
   @UseGuards(JwtAuthGuard)

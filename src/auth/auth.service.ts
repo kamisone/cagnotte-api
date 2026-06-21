@@ -125,6 +125,16 @@ export class AuthService {
     return tokens;
   }
 
+  async updateName(userId: string, name: string) {
+    await this.usersService.update(userId, {
+      name,
+      initial: name[0].toUpperCase(),
+    });
+    const user = await this.usersService.findById(userId);
+    const { password, refreshToken, ...profile } = user;
+    return profile;
+  }
+
   async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
 

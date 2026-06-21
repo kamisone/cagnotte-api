@@ -12,6 +12,7 @@ const CreateReceiptSchema = z.object({
   colocationId: z.string(),
   store: z.string(),
   date: z.string(),
+  time: z.string().optional(),
   totalAmount: z.number(),
   photoUrl: z.string().url().optional(),
   items: z.array(CreateReceiptItemSchema),

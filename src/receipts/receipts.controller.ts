@@ -2,13 +2,17 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('receipts')
@@ -29,5 +33,12 @@ export class ReceiptsController {
   @Get(':colocationId/stats')
   getStats(@Param('colocationId') colocationId: string) {
     return this.receiptsService.getStats(colocationId);
+  }
+
+  @Delete(':id')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id') id: string) {
+    return this.receiptsService.remove(id);
   }
 }

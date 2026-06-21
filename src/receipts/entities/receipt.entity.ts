@@ -23,6 +23,9 @@ export class Receipt {
   @Column({ type: 'date' })
   date: string;
 
+  @Column({ nullable: true })
+  time: string | null;
+
   @Column('decimal', { precision: 10, scale: 2 })
   totalAmount: number;
 

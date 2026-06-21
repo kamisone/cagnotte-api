@@ -7,12 +7,14 @@ import { ReceiptsService } from './receipts.service';
 import { ReceiptsController } from './receipts.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { StorageModule } from '../storage/storage.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Receipt, ReceiptItem, Contribution]),
     forwardRef(() => NotificationsModule),
     StorageModule,
+    UsersModule,
   ],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],

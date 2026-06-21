@@ -25,6 +25,7 @@ export class ReceiptsService {
     const receipt = this.receiptRepository.create({
       store: dto.store,
       date: dto.date,
+      time: dto.time ?? null,
       totalAmount: dto.totalAmount,
       photoUrl: dto.photoUrl,
       userId,
@@ -87,6 +88,10 @@ export class ReceiptsService {
       // fall back to stored URL on signing failure
     }
     return receipt;
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.receiptRepository.delete(id);
   }
 
   async findByColocation(colocationId: string): Promise<Receipt[]> {

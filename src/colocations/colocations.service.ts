@@ -160,6 +160,18 @@ export class ColocationsService {
     await this.memberRepository.remove(targetMembership);
   }
 
+  async setPurchaseOrder(
+    colocationId: string,
+    userIds: string[],
+  ): Promise<Colocation> {
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation) throw new NotFoundException('Colocation not found');
+
+    colocation.purchaseOrder = userIds;
+    colocation.currentPurchaserIndex = 0;
+    return this.colocationRepository.save(colocation);
+  }
+
   async createAndAddMember(
     colocationId: string,
     requesterId: string,

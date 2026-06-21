@@ -20,6 +20,12 @@ export class Colocation {
   @Column('decimal', { precision: 10, scale: 2, default: 50.0 })
   spendingGapThreshold: number;
 
+  @Column('simple-array', { nullable: true })
+  purchaseOrder: string[];
+
+  @Column({ default: 0 })
+  currentPurchaserIndex: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

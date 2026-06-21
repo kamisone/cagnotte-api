@@ -8,6 +8,7 @@ import { ReceiptsController } from './receipts.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { StorageModule } from '../storage/storage.module';
 import { UsersModule } from '../users/users.module';
+import { RotationsModule } from '../rotations/rotations.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UsersModule } from '../users/users.module';
     forwardRef(() => NotificationsModule),
     StorageModule,
     UsersModule,
+    RotationsModule,
   ],
   controllers: [ReceiptsController],
   providers: [ReceiptsService],

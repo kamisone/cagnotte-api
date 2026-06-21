@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Rotation } from './entities/rotation.entity';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
+import { Colocation } from '../colocations/entities/colocation.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class RotationsService {
@@ -11,104 +13,119 @@ export class RotationsService {
     private readonly rotationRepository: Repository<Rotation>,
     @InjectRepository(ColocationMember)
     private readonly memberRepository: Repository<ColocationMember>,
+    @InjectRepository(Colocation)
+    private readonly colocationRepository: Repository<Colocation>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
-  async findByColocation(colocationId: string): Promise<Rotation[]> {
-    const rotations = await this.rotationRepository.find({
-      where: { colocationId },
-      order: { orderIndex: 'ASC' },
-    });
+  async findByColocation(colocationId: string) {
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation) throw new NotFoundException('Colocation not found');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const order = colocation.purchaseOrder;
+    if (!order || order.length === 0) return [];
 
-    return rotations.map((rotation) => {
-      const weekStart = new Date(rotation.weekStart);
-      const weekEnd = new Date(rotation.weekEnd);
+    const users = await this.userRepository.find({ where: { id: In(order) } });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    const currentIndex = colocation.currentPurchaserIndex % order.length;
 
-      if (today >= weekStart && today <= weekEnd) {
-        rotation.status = 'current';
-      } else if (today > weekEnd) {
-        rotation.status = 'completed';
-      } else {
-        rotation.status = 'upcoming';
-      }
+    return order.map((userId, i) => {
+      const user = userMap.get(userId);
+      let status: string;
+      if (i === currentIndex) status = 'current';
+      else if (i < currentIndex) status = 'completed';
+      else status = 'upcoming';
 
-      return rotation;
+      return {
+        id: `${colocationId}-${i}`,
+        orderIndex: i,
+        status,
+        weekStart: null,
+        weekEnd: null,
+        user: user
+          ? {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              colorHex: user.colorHex,
+              initial: user.initial,
+              phone: user.phone ?? null,
+              isAdmin: user.isAdmin,
+            }
+          : null,
+      };
     });
   }
 
-  async generate(colocationId: string): Promise<Rotation[]> {
+  async generate(colocationId: string) {
     const members = await this.memberRepository.find({
       where: { colocationId },
+      relations: ['user'],
     });
 
     if (members.length === 0) {
       throw new NotFoundException('No members found in this colocation');
     }
 
-    // Get the highest existing orderIndex to continue from
-    const lastRotation = await this.rotationRepository.findOne({
-      where: { colocationId },
-      order: { orderIndex: 'DESC' },
+    const order = members.map((m) => m.userId);
+
+    await this.colocationRepository.update(colocationId, {
+      purchaseOrder: order,
+      currentPurchaserIndex: 0,
     });
 
-    let startIndex = lastRotation ? lastRotation.orderIndex + 1 : 0;
-
-    // Determine the start date
-    let startDate: Date;
-    if (lastRotation) {
-      startDate = new Date(lastRotation.weekEnd);
-      startDate.setDate(startDate.getDate() + 1);
-    } else {
-      startDate = new Date();
-      // Set to next Monday
-      const day = startDate.getDay();
-      const diff = day === 0 ? 1 : 8 - day;
-      startDate.setDate(startDate.getDate() + diff);
-    }
-    startDate.setHours(0, 0, 0, 0);
-
-    const rotations: Rotation[] = [];
-
-    for (let i = 0; i < members.length; i++) {
-      const weekStart = new Date(startDate);
-      weekStart.setDate(weekStart.getDate() + i * 7);
-
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-
-      const rotation = this.rotationRepository.create({
-        weekStart: weekStart.toISOString().split('T')[0],
-        weekEnd: weekEnd.toISOString().split('T')[0],
-        orderIndex: startIndex + i,
-        userId: members[i].userId,
-        colocationId,
-        status: 'upcoming',
-      });
-
-      rotations.push(rotation);
-    }
-
-    return this.rotationRepository.save(rotations);
+    return this.findByColocation(colocationId);
   }
 
-  async swap(myRotationId: string, theirRotationId: string): Promise<Rotation[]> {
-    const myRotation = await this.rotationRepository.findOneBy({
-      id: myRotationId,
-    });
-    const theirRotation = await this.rotationRepository.findOneBy({
-      id: theirRotationId,
-    });
+  async setOrder(colocationId: string, userIds: string[]) {
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation) throw new NotFoundException('Colocation not found');
 
-    if (!myRotation || !theirRotation) {
-      throw new NotFoundException('One or both rotations not found');
+    colocation.purchaseOrder = userIds;
+    colocation.currentPurchaserIndex = 0;
+    await this.colocationRepository.save(colocation);
+
+    return this.findByColocation(colocationId);
+  }
+
+  async advancePurchaser(colocationId: string): Promise<void> {
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation?.purchaseOrder?.length) return;
+
+    colocation.currentPurchaserIndex =
+      (colocation.currentPurchaserIndex + 1) % colocation.purchaseOrder.length;
+    await this.colocationRepository.save(colocation);
+  }
+
+  async getCurrentPurchaserId(colocationId: string): Promise<string | null> {
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation?.purchaseOrder?.length) return null;
+    const index = colocation.currentPurchaserIndex % colocation.purchaseOrder.length;
+    return colocation.purchaseOrder[index];
+  }
+
+  async swap(myRotationId: string, theirRotationId: string) {
+    const [, myIndexStr] = myRotationId.split(/-(?=[^-]+$)/);
+    const [colocationId, theirIndexStr] = theirRotationId.split(/-(?=[^-]+$)/);
+
+    const myIndex = parseInt(myIndexStr, 10);
+    const theirIndex = parseInt(theirIndexStr, 10);
+
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation?.purchaseOrder) {
+      throw new NotFoundException('No purchase order found');
     }
 
-    const tempUserId = myRotation.userId;
-    myRotation.userId = theirRotation.userId;
-    theirRotation.userId = tempUserId;
+    const order = [...colocation.purchaseOrder];
+    if (myIndex >= order.length || theirIndex >= order.length) {
+      throw new NotFoundException('Invalid rotation index');
+    }
 
-    return this.rotationRepository.save([myRotation, theirRotation]);
+    [order[myIndex], order[theirIndex]] = [order[theirIndex], order[myIndex]];
+    colocation.purchaseOrder = order;
+    await this.colocationRepository.save(colocation);
+
+    return this.findByColocation(colocationId);
   }
 }

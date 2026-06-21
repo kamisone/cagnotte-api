@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Body,
@@ -16,6 +17,7 @@ import { JoinColocationDto } from './dto/join-colocation.dto';
 import { UpdateColocationDto } from './dto/update-colocation.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('colocations')
@@ -68,5 +70,14 @@ export class ColocationsController {
     @Param('userId') userId: string,
   ) {
     return this.colocationsService.removeMember(id, user.id, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Put(':id/purchase-order')
+  setPurchaseOrder(
+    @Param('id') id: string,
+    @Body() body: { userIds: string[] },
+  ) {
+    return this.colocationsService.setPurchaseOrder(id, body.userIds);
   }
 }

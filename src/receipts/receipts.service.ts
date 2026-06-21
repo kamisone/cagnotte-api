@@ -7,6 +7,7 @@ import { Colocation } from '../colocations/entities/colocation.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
+import { RotationsService } from '../rotations/rotations.service';
 
 @Injectable()
 export class ReceiptsService {
@@ -19,6 +20,7 @@ export class ReceiptsService {
     private readonly colocationRepository: Repository<Colocation>,
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
+    private readonly rotationsService: RotationsService,
   ) {}
 
   async create(userId: string, dto: CreateReceiptDto): Promise<Receipt> {
@@ -40,6 +42,12 @@ export class ReceiptsService {
 
     const saved = await this.receiptRepository.save(receipt);
     const hydrated = await this.receiptRepository.findOneOrFail({ where: { id: saved.id } });
+
+    // Advance purchase rotation if this user is the current purchaser
+    const currentPurchaserId = await this.rotationsService.getCurrentPurchaserId(dto.colocationId);
+    if (currentPurchaserId === userId) {
+      await this.rotationsService.advancePurchaser(dto.colocationId);
+    }
 
     // Check spending gap between tenants
     await this.checkSpendingGap(dto.colocationId);

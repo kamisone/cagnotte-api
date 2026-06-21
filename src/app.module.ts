@@ -12,6 +12,7 @@ import { ReceiptsModule } from './receipts/receipts.module';
 import { RotationsModule } from './rotations/rotations.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { StorageModule } from './storage/storage.module';
+import { CatalogModule } from './catalog/catalog.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { StorageModule } from './storage/storage.module';
     RotationsModule,
     NotificationsModule,
     StorageModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

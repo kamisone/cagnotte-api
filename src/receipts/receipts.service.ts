@@ -89,11 +89,12 @@ export class ReceiptsService {
 
   async remove(id: string): Promise<void> {
     const receipt = await this.receiptRepository.findOne({ where: { id } });
-    if (receipt?.photoUrl) {
+    if (!receipt) return;
+    if (receipt.photoUrl) {
       const key = this.storageService.extractKey(receipt.photoUrl);
       await this.storageService.deleteFile(key);
     }
-    await this.receiptRepository.delete(id);
+    await this.receiptRepository.remove(receipt);
   }
 
   async findByColocation(colocationId: string): Promise<Receipt[]> {

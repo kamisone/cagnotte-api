@@ -74,4 +74,19 @@ spec:
                 secretKeyRef:
                   name: api-envs
                   key: JWT_REFRESH_SECRET
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: api-envs
+                  key: ADMIN_EMAIL
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: api-envs
+                  key: ADMIN_PASSWORD
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: api-envs
+                  key: REDIS_PASSWORD
             

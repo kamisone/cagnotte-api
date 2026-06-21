@@ -2,14 +2,21 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { Colocation } from './entities/colocation.entity';
 import { ColocationMember } from './entities/colocation-member.entity';
 import { Contribution } from '../contributions/entities/contribution.entity';
 import { Receipt } from '../receipts/entities/receipt.entity';
 import { CreateColocationDto } from './dto/create-colocation.dto';
+import { UpdateColocationDto } from './dto/update-colocation.dto';
+import { UsersService } from '../users/users.service';
+import { AddMemberDto } from './dto/add-member.dto';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class ColocationsService {
@@ -22,6 +29,8 @@ export class ColocationsService {
     private readonly contributionRepository: Repository<Contribution>,
     @InjectRepository(Receipt)
     private readonly receiptRepository: Repository<Receipt>,
+    private readonly usersService: UsersService,
+    private readonly authService: AuthService,
   ) {}
 
   private generateInviteCode(): string {
@@ -79,26 +88,33 @@ export class ColocationsService {
     };
   }
 
-  async join(userId: string, inviteCode: string): Promise<ColocationMember> {
+  async joinAsGuest(inviteCode: string): Promise<{ accessToken: string; refreshToken: string }> {
     const colocation = await this.colocationRepository.findOneBy({ inviteCode });
     if (!colocation) {
-      throw new NotFoundException('Invalid invite code');
+      throw new NotFoundException('Code d\'invitation invalide');
     }
 
-    const existing = await this.memberRepository.findOne({
-      where: { userId, colocationId: colocation.id },
+    const guestEmail = `guest-${crypto.randomUUID()}@cagnotte.local`;
+    const plainPassword = crypto.randomBytes(9).toString('base64url');
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+    const user = await this.usersService.create({
+      email: guestEmail,
+      password: hashedPassword,
+      name: 'Locataire',
+      initial: 'L',
+      colorHex: '#17A877',
+      profileCompleted: false,
     });
-    if (existing) {
-      throw new ConflictException('User already a member of this colocation');
-    }
 
     const member = this.memberRepository.create({
-      userId,
+      userId: user.id,
       colocationId: colocation.id,
       role: 'member',
     });
+    await this.memberRepository.save(member);
 
-    return this.memberRepository.save(member);
+    return this.authService.generateTokens(user.id, guestEmail);
   }
 
   async getBalance(colocationId: string) {
@@ -128,5 +144,95 @@ export class ColocationsService {
     return this.memberRepository.find({
       where: { colocationId },
     });
+  }
+
+  async update(
+    colocationId: string,
+    requesterId: string,
+    dto: UpdateColocationDto,
+  ): Promise<Colocation> {
+    const membership = await this.memberRepository.findOne({
+      where: { colocationId, userId: requesterId },
+    });
+    if (!membership || membership.role !== 'admin') {
+      throw new ForbiddenException('Admin access required');
+    }
+
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation) throw new NotFoundException('Colocation not found');
+
+    if (dto.name !== undefined) colocation.name = dto.name;
+    if (dto.contributionAmount !== undefined) colocation.contributionAmount = dto.contributionAmount;
+    if (dto.lowBalanceThreshold !== undefined) colocation.lowBalanceThreshold = dto.lowBalanceThreshold;
+
+    return this.colocationRepository.save(colocation);
+  }
+
+  async removeMember(
+    colocationId: string,
+    requesterId: string,
+    targetUserId: string,
+  ): Promise<void> {
+    const requesterMembership = await this.memberRepository.findOne({
+      where: { colocationId, userId: requesterId },
+    });
+    if (!requesterMembership || requesterMembership.role !== 'admin') {
+      throw new ForbiddenException('Admin access required');
+    }
+    if (requesterId === targetUserId) {
+      throw new ForbiddenException('Admin cannot remove themselves');
+    }
+
+    const targetMembership = await this.memberRepository.findOne({
+      where: { colocationId, userId: targetUserId },
+    });
+    if (!targetMembership) throw new NotFoundException('Member not found');
+    if (targetMembership.role === 'admin') {
+      throw new ForbiddenException('Cannot remove another admin');
+    }
+
+    await this.memberRepository.remove(targetMembership);
+  }
+
+  async createAndAddMember(
+    colocationId: string,
+    requesterId: string,
+    dto: AddMemberDto,
+  ) {
+    const requesterMembership = await this.memberRepository.findOne({
+      where: { colocationId, userId: requesterId },
+    });
+    if (!requesterMembership || requesterMembership.role !== 'admin') {
+      throw new ForbiddenException('Admin access required');
+    }
+
+    const existing = await this.usersService.findByEmail(dto.email);
+    if (existing) {
+      throw new ConflictException('Email already registered');
+    }
+
+    const plainPassword = dto.password ?? crypto.randomBytes(9).toString('base64url');
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+    const user = await this.usersService.create({
+      email: dto.email,
+      password: hashedPassword,
+      name: dto.name,
+      colorHex: dto.colorHex,
+      initial: dto.name[0].toUpperCase(),
+    });
+
+    const member = this.memberRepository.create({
+      userId: user.id,
+      colocationId,
+      role: 'member',
+    });
+    await this.memberRepository.save(member);
+
+    const { password, refreshToken, ...profile } = user;
+    return {
+      user: profile,
+      generatedPassword: dto.password ? null : plainPassword,
+    };
   }
 }

@@ -32,6 +32,9 @@ export class User {
   @Column({ default: false })
   isAdmin: boolean;
 
+  @Column({ default: true })
+  profileCompleted: boolean;
+
   @Column({ nullable: true })
   refreshToken: string;
 

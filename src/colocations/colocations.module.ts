@@ -6,6 +6,8 @@ import { Contribution } from '../contributions/entities/contribution.entity';
 import { Receipt } from '../receipts/entities/receipt.entity';
 import { ColocationsService } from './colocations.service';
 import { ColocationsController } from './colocations.controller';
+import { UsersModule } from '../users/users.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { ColocationsController } from './colocations.controller';
       Contribution,
       Receipt,
     ]),
+    UsersModule,
+    AuthModule,
   ],
   controllers: [ColocationsController],
   providers: [ColocationsService],

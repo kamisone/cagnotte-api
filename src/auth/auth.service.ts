@@ -4,14 +4,18 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
+import { ColocationMember } from '../colocations/entities/colocation-member.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +23,8 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    @InjectRepository(ColocationMember)
+    private readonly memberRepository: Repository<ColocationMember>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -89,6 +95,33 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
+    return tokens;
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    await this.memberRepository.delete({ userId });
+    await this.usersService.delete(userId);
+  }
+
+  async completeProfile(userId: string, dto: CompleteProfileDto) {
+    const existing = await this.usersService.findByEmail(dto.email);
+    if (existing && existing.id !== userId) {
+      throw new ConflictException('Email already registered');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    await this.usersService.update(userId, {
+      name: dto.name,
+      email: dto.email,
+      password: hashedPassword,
+      colorHex: dto.colorHex,
+      phone: dto.phone,
+      initial: dto.name[0].toUpperCase(),
+      profileCompleted: true,
+    });
+
+    const tokens = await this.generateTokens(userId, dto.email);
     return tokens;
   }
 

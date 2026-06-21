@@ -30,6 +30,14 @@ export class UsersService {
     await this.usersRepository.update(userId, { refreshToken });
   }
 
+  async update(userId: string, data: Partial<User>): Promise<void> {
+    await this.usersRepository.update(userId, data);
+  }
+
+  async delete(userId: string): Promise<void> {
+    await this.usersRepository.delete(userId);
+  }
+
   async updatePassword(userId: string, hashedPassword: string): Promise<void> {
     await this.usersRepository.update(userId, { password: hashedPassword });
   }

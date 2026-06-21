@@ -35,6 +35,8 @@ export class ReceiptsService {
     });
 
     const saved = await this.receiptRepository.save(receipt);
+    // Reload with eager relations (save() does not hydrate them)
+    const hydrated = await this.receiptRepository.findOneOrFail({ where: { id: saved.id } });
 
     // Compute balance after receipt creation
     const contributionsResult = await this.contributionRepository
@@ -70,7 +72,7 @@ export class ReceiptsService {
       userId,
     );
 
-    return saved;
+    return hydrated;
   }
 
   async findByColocation(colocationId: string): Promise<Receipt[]> {
@@ -102,22 +104,42 @@ export class ReceiptsService {
 
     const byCategory = byCategoryRaw.map((row) => ({
       category: row.category,
-      amount: parseFloat(row.amount),
+      total: parseFloat(row.amount),
       fraction: totalSpent > 0 ? parseFloat(row.amount) / totalSpent : 0,
     }));
 
-    // By roommate
+    // By roommate — join user table to return the full user object
     const byRoommateRaw = await this.receiptRepository
       .createQueryBuilder('r')
+      .innerJoin('r.user', 'u')
       .select('r.userId', 'userId')
       .addSelect('SUM(r.totalAmount)', 'amount')
+      .addSelect('u.id', 'uid')
+      .addSelect('u.name', 'uName')
+      .addSelect('u.email', 'uEmail')
+      .addSelect('u.colorHex', 'uColorHex')
+      .addSelect('u.initial', 'uInitial')
+      .addSelect('u.phone', 'uPhone')
       .where('r.colocationId = :colocationId', { colocationId })
       .groupBy('r.userId')
+      .addGroupBy('u.id')
+      .addGroupBy('u.name')
+      .addGroupBy('u.email')
+      .addGroupBy('u.colorHex')
+      .addGroupBy('u.initial')
+      .addGroupBy('u.phone')
       .getRawMany();
 
     const byRoommate = byRoommateRaw.map((row) => ({
-      userId: row.userId,
-      amount: parseFloat(row.amount),
+      user: {
+        id: row.uid,
+        email: row.uEmail,
+        name: row.uName,
+        colorHex: row.uColorHex,
+        initial: row.uInitial,
+        phone: row.uPhone ?? null,
+      },
+      total: parseFloat(row.amount),
       fraction: totalSpent > 0 ? parseFloat(row.amount) / totalSpent : 0,
     }));
 

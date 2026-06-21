@@ -165,4 +165,68 @@ export class ReceiptsService {
 
     return { totalSpent, byCategory, byRoommate };
   }
+
+  async getArticleCatalog(
+    colocationId: string,
+  ): Promise<{ name: string; category: string; lastPrice: number }[]> {
+    const raw = await this.receiptItemRepository
+      .createQueryBuilder('ri')
+      .innerJoin('ri.receipt', 'r')
+      .select('ri.name', 'name')
+      .addSelect('ri.category', 'category')
+      .addSelect('MAX(ri.price)', 'lastPrice')
+      .addSelect('COUNT(*)', 'usageCount')
+      .where('r.colocationId = :colocationId', { colocationId })
+      .groupBy('ri.name')
+      .addGroupBy('ri.category')
+      .orderBy('COUNT(*)', 'DESC')
+      .getRawMany();
+
+    return raw.map((row) => ({
+      name: row.name,
+      category: row.category,
+      lastPrice: parseFloat(row.lastPrice),
+    }));
+  }
+
+  async getArticleStats(
+    colocationId: string,
+  ): Promise<
+    {
+      name: string;
+      category: string;
+      totalAmount: number;
+      totalQuantity: number;
+      fraction: number;
+    }[]
+  > {
+    const totalResult = await this.receiptRepository
+      .createQueryBuilder('r')
+      .select('COALESCE(SUM(r.totalAmount), 0)', 'totalSpent')
+      .where('r.colocationId = :colocationId', { colocationId })
+      .getRawOne();
+
+    const overallTotal = Math.max(parseFloat(totalResult.totalSpent), 0.01);
+
+    const raw = await this.receiptItemRepository
+      .createQueryBuilder('ri')
+      .innerJoin('ri.receipt', 'r')
+      .select('ri.name', 'name')
+      .addSelect('ri.category', 'category')
+      .addSelect('SUM(ri.price * ri.quantity)', 'totalAmount')
+      .addSelect('SUM(ri.quantity)', 'totalQuantity')
+      .where('r.colocationId = :colocationId', { colocationId })
+      .groupBy('ri.name')
+      .addGroupBy('ri.category')
+      .orderBy('SUM(ri.price * ri.quantity)', 'DESC')
+      .getRawMany();
+
+    return raw.map((row) => ({
+      name: row.name,
+      category: row.category,
+      totalAmount: parseFloat(row.totalAmount),
+      totalQuantity: parseInt(row.totalQuantity, 10),
+      fraction: parseFloat(row.totalAmount) / overallTotal,
+    }));
+  }
 }

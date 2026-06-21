@@ -30,6 +30,16 @@ export class ReceiptsController {
     return this.receiptsService.findByColocation(colocationId);
   }
 
+  @Get(':colocationId/articles/stats')
+  getArticleStats(@Param('colocationId') colocationId: string) {
+    return this.receiptsService.getArticleStats(colocationId);
+  }
+
+  @Get(':colocationId/articles')
+  getArticleCatalog(@Param('colocationId') colocationId: string) {
+    return this.receiptsService.getArticleCatalog(colocationId);
+  }
+
   @Get(':colocationId/stats')
   getStats(@Param('colocationId') colocationId: string) {
     return this.receiptsService.getStats(colocationId);

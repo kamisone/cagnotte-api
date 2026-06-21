@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Receipt } from './entities/receipt.entity';
@@ -24,6 +24,11 @@ export class ReceiptsService {
   ) {}
 
   async create(userId: string, dto: CreateReceiptDto): Promise<Receipt> {
+    const currentPurchaserId = await this.rotationsService.getCurrentPurchaserId(dto.colocationId);
+    if (currentPurchaserId && currentPurchaserId !== userId) {
+      throw new ForbiddenException("Ce n'est pas votre tour de faire les courses");
+    }
+
     const receipt = this.receiptRepository.create({
       store: dto.store,
       date: dto.date,
@@ -43,9 +48,7 @@ export class ReceiptsService {
     const saved = await this.receiptRepository.save(receipt);
     const hydrated = await this.receiptRepository.findOneOrFail({ where: { id: saved.id } });
 
-    // Advance purchase rotation if this user is the current purchaser
-    const currentPurchaserId = await this.rotationsService.getCurrentPurchaserId(dto.colocationId);
-    if (currentPurchaserId === userId) {
+    if (currentPurchaserId) {
       await this.rotationsService.advancePurchaser(dto.colocationId);
     }
 

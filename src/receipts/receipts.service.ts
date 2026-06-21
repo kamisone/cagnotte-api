@@ -91,6 +91,11 @@ export class ReceiptsService {
   }
 
   async remove(id: string): Promise<void> {
+    const receipt = await this.receiptRepository.findOne({ where: { id } });
+    if (receipt?.photoUrl) {
+      const key = this.storageService.extractKey(receipt.photoUrl);
+      await this.storageService.deleteFile(key);
+    }
     await this.receiptRepository.delete(id);
   }
 

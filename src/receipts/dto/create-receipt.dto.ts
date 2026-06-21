@@ -13,6 +13,7 @@ const CreateReceiptSchema = z.object({
   store: z.string(),
   date: z.string(),
   totalAmount: z.number(),
+  photoUrl: z.string().url().optional(),
   items: z.array(CreateReceiptItemSchema),
 });
 

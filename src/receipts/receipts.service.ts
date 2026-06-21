@@ -24,6 +24,7 @@ export class ReceiptsService {
       store: dto.store,
       date: dto.date,
       totalAmount: dto.totalAmount,
+      photoUrl: dto.photoUrl,
       userId,
       colocationId: dto.colocationId,
       items: dto.items.map((item) => ({

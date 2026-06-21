@@ -69,6 +69,10 @@ jobs:
             --from-literal TYPEORM_DATABASE=${{ secrets.TYPEORM_DATABASE }} \
             --from-literal JWT_SECRET=${{ secrets.JWT_SECRET }} \
             --from-literal JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
+            --from-literal GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }} \
+            --from-literal GCS_PROJECT_ID=${{ secrets.GCS_PROJECT_ID }} \
+            --from-literal GCS_CLIENT_EMAIL=${{ secrets.GCS_CLIENT_EMAIL }} \
+            --from-literal GCS_PRIVATE_KEY=${{ secrets.GCS_PRIVATE_KEY }} \
             --from-literal ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
             --from-literal ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
             --from-literal REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}

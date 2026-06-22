@@ -8,6 +8,7 @@ import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { RotationsService } from '../rotations/rotations.service';
+import { ShoppingService } from '../shopping/shopping.service';
 
 @Injectable()
 export class ReceiptsService {
@@ -21,6 +22,7 @@ export class ReceiptsService {
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
     private readonly rotationsService: RotationsService,
+    private readonly shoppingService: ShoppingService,
   ) {}
 
   async create(userId: string, dto: CreateReceiptDto): Promise<Receipt> {
@@ -51,6 +53,8 @@ export class ReceiptsService {
     if (currentPurchaserId) {
       await this.rotationsService.advancePurchaser(dto.colocationId);
     }
+
+    await this.shoppingService.clearByColocation(dto.colocationId);
 
     // Check spending gap between tenants
     await this.checkSpendingGap(dto.colocationId);

@@ -40,6 +40,10 @@ export class ShoppingService {
     return this.shoppingItemRepository.save(item);
   }
 
+  async clearByColocation(colocationId: string): Promise<void> {
+    await this.shoppingItemRepository.delete({ colocationId });
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.shoppingItemRepository.delete(id);
     if (result.affected === 0) {

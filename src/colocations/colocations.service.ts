@@ -241,20 +241,35 @@ export class ColocationsService {
     }
 
     const existing = await this.usersService.findByEmail(dto.email);
+    let user: any;
+    let generatedPassword: string | null = null;
+
     if (existing) {
-      throw new ConflictException('Email already registered');
+      const activeMembership = await this.memberRepository.findOne({
+        where: { userId: existing.id, colocationId },
+      });
+      if (activeMembership) {
+        throw new ConflictException('This user is already a member of this colocation');
+      }
+      existing.name = dto.name;
+      existing.colorHex = dto.colorHex;
+      existing.initial = dto.name[0].toUpperCase();
+      if (dto.password) {
+        existing.password = await bcrypt.hash(dto.password, 10);
+      }
+      user = await this.usersService.save(existing);
+    } else {
+      const plainPassword = dto.password ?? crypto.randomBytes(9).toString('base64url');
+      generatedPassword = dto.password ? null : plainPassword;
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      user = await this.usersService.create({
+        email: dto.email,
+        password: hashedPassword,
+        name: dto.name,
+        colorHex: dto.colorHex,
+        initial: dto.name[0].toUpperCase(),
+      });
     }
-
-    const plainPassword = dto.password ?? crypto.randomBytes(9).toString('base64url');
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-    const user = await this.usersService.create({
-      email: dto.email,
-      password: hashedPassword,
-      name: dto.name,
-      colorHex: dto.colorHex,
-      initial: dto.name[0].toUpperCase(),
-    });
 
     const member = this.memberRepository.create({
       userId: user.id,
@@ -272,7 +287,7 @@ export class ColocationsService {
     const { password, refreshToken, ...profile } = user;
     return {
       user: profile,
-      generatedPassword: dto.password ? null : plainPassword,
+      generatedPassword,
     };
   }
 }

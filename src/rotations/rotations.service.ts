@@ -29,15 +29,21 @@ export class RotationsService {
     const disabled = colocation.disabledMembers ?? [];
     const users = await this.userRepository.find({ where: { id: In(order) } });
     const userMap = new Map(users.map((u) => [u.id, u]));
-    const currentIndex = colocation.currentPurchaserIndex % order.length;
+
+    // Find the actual current active person
+    let actualCurrentIndex = colocation.currentPurchaserIndex % order.length;
+    for (let i = 0; i < order.length; i++) {
+      if (!disabled.includes(order[actualCurrentIndex])) break;
+      actualCurrentIndex = (actualCurrentIndex + 1) % order.length;
+    }
 
     return order.map((userId, i) => {
       const user = userMap.get(userId);
       const isDisabled = disabled.includes(userId);
       let status: string;
       if (isDisabled) status = 'disabled';
-      else if (i === currentIndex) status = 'current';
-      else if (i < currentIndex) status = 'completed';
+      else if (i === actualCurrentIndex) status = 'current';
+      else if (i < actualCurrentIndex) status = 'completed';
       else status = 'upcoming';
 
       return {

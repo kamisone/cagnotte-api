@@ -165,13 +165,31 @@ export class ColocationsService {
     if (!colocation) throw new NotFoundException('Colocation not found');
 
     const disabled = colocation.disabledMembers ?? [];
-    if (disabled.includes(userId)) {
+    const isCurrentlyDisabled = disabled.includes(userId);
+
+    if (isCurrentlyDisabled) {
       colocation.disabledMembers = disabled.filter((id) => id !== userId);
     } else {
       colocation.disabledMembers = [...disabled, userId];
+
+      // If the disabled member is the current purchaser, advance to next active
+      const order = colocation.purchaseOrder ?? [];
+      if (order.length > 0) {
+        const currentIndex = colocation.currentPurchaserIndex % order.length;
+        if (order[currentIndex] === userId) {
+          let nextIndex = (currentIndex + 1) % order.length;
+          const newDisabled = colocation.disabledMembers;
+          for (let i = 0; i < order.length; i++) {
+            if (!newDisabled.includes(order[nextIndex])) break;
+            nextIndex = (nextIndex + 1) % order.length;
+          }
+          colocation.currentPurchaserIndex = nextIndex;
+        }
+      }
     }
+
     await this.colocationRepository.save(colocation);
-    return { userId, isDisabled: colocation.disabledMembers.includes(userId) };
+    return { userId, isDisabled: !isCurrentlyDisabled };
   }
 
   async setPurchaseOrder(

@@ -43,7 +43,6 @@ export class RotationsService {
       let status: string;
       if (isDisabled) status = 'disabled';
       else if (i === actualCurrentIndex) status = 'current';
-      else if (i < actualCurrentIndex) status = 'completed';
       else status = 'upcoming';
 
       return {

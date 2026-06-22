@@ -1,14 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Report } from './entities/report.entity';
 import { ReportComment } from './entities/report-comment.entity';
 import { ReportTag } from './entities/report-tag.entity';
 import { CreateReportDto } from './dto/create-report.dto';
+import { UpdateReportDto } from './dto/update-report.dto';
 import { CreateReportCommentDto } from './dto/create-report-comment.dto';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
+import { ColocationMember } from '../colocations/entities/colocation-member.entity';
 
 @Injectable()
 export class ReportsService {
@@ -19,6 +21,8 @@ export class ReportsService {
     private readonly commentRepository: Repository<ReportComment>,
     @InjectRepository(ReportTag)
     private readonly tagRepository: Repository<ReportTag>,
+    @InjectRepository(ColocationMember)
+    private readonly memberRepository: Repository<ColocationMember>,
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
   ) {}
@@ -73,6 +77,30 @@ export class ReportsService {
     );
 
     return this.withSignedPhotoUrls(hydrated);
+  }
+
+  async update(id: string, userId: string, dto: UpdateReportDto) {
+    const report = await this.reportRepository.findOne({ where: { id } });
+    if (!report) throw new NotFoundException('Report not found');
+
+    const isCreator = report.userId === userId;
+    const membership = await this.memberRepository.findOne({
+      where: { colocationId: report.colocationId, userId },
+    });
+    const isAdmin = membership?.role === 'admin';
+
+    if (!isCreator && !isAdmin) {
+      throw new ForbiddenException('Only the creator or an admin can update this report');
+    }
+
+    if (dto.title !== undefined) report.title = dto.title;
+    if (dto.description !== undefined) report.description = dto.description;
+    if (dto.tags !== undefined) report.tags = dto.tags;
+    if (dto.photoUrls !== undefined) report.photoUrls = dto.photoUrls;
+
+    await this.reportRepository.save(report);
+    const updated = await this.reportRepository.findOneOrFail({ where: { id } });
+    return this.withSignedPhotoUrls(updated);
   }
 
   async findOneWithComments(id: string) {

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
+import { UpdateReportDto } from './dto/update-report.dto';
 import { CreateReportCommentDto } from './dto/create-report-comment.dto';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -34,6 +36,15 @@ export class ReportsController {
   @Post()
   create(@CurrentUser() user: any, @Body() dto: CreateReportDto) {
     return this.reportsService.create(user.id, dto);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateReportDto,
+  ) {
+    return this.reportsService.update(id, user.id, dto);
   }
 
   @Get(':id/detail')

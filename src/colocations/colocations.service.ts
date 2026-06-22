@@ -104,6 +104,11 @@ export class ColocationsService {
     });
     await this.memberRepository.save(member);
 
+    if (colocation.purchaseOrder?.length > 0) {
+      colocation.purchaseOrder = [...colocation.purchaseOrder, user.id];
+      await this.colocationRepository.save(colocation);
+    }
+
     return this.authService.generateTokens(user.id, guestEmail);
   }
 
@@ -159,6 +164,24 @@ export class ColocationsService {
     }
 
     await this.memberRepository.remove(targetMembership);
+
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (colocation?.purchaseOrder?.length > 0) {
+      const removedIndex = colocation.purchaseOrder.indexOf(targetUserId);
+      if (removedIndex !== -1) {
+        colocation.purchaseOrder = colocation.purchaseOrder.filter((id) => id !== targetUserId);
+        colocation.disabledMembers = (colocation.disabledMembers ?? []).filter((id) => id !== targetUserId);
+        if (colocation.purchaseOrder.length > 0) {
+          if (removedIndex < colocation.currentPurchaserIndex) {
+            colocation.currentPurchaserIndex--;
+          }
+          colocation.currentPurchaserIndex = colocation.currentPurchaserIndex % colocation.purchaseOrder.length;
+        } else {
+          colocation.currentPurchaserIndex = 0;
+        }
+        await this.colocationRepository.save(colocation);
+      }
+    }
   }
 
   async toggleMemberActive(colocationId: string, userId: string) {
@@ -239,6 +262,12 @@ export class ColocationsService {
       role: 'member',
     });
     await this.memberRepository.save(member);
+
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (colocation?.purchaseOrder?.length > 0) {
+      colocation.purchaseOrder = [...colocation.purchaseOrder, user.id];
+      await this.colocationRepository.save(colocation);
+    }
 
     const { password, refreshToken, ...profile } = user;
     return {

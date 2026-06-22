@@ -29,6 +29,9 @@ export class Colocation {
   @Column('simple-array', { nullable: true })
   disabledMembers: string[];
 
+  @Column({ default: true })
+  notificationsEnabled: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

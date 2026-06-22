@@ -130,6 +130,7 @@ export class ColocationsService {
 
     if (dto.name !== undefined) colocation.name = dto.name;
     if (dto.spendingGapThreshold !== undefined) colocation.spendingGapThreshold = dto.spendingGapThreshold;
+    if (dto.notificationsEnabled !== undefined) colocation.notificationsEnabled = dto.notificationsEnabled;
 
     return this.colocationRepository.save(colocation);
   }

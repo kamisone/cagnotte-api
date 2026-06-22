@@ -24,6 +24,11 @@ export class CatalogController {
     return this.catalogService.findByColocation(colocationId);
   }
 
+  @Get(':colocationId/categories')
+  findCategories(@Param('colocationId') colocationId: string) {
+    return this.catalogService.findCategories(colocationId);
+  }
+
   @Post()
   @UseGuards(AdminGuard)
   create(@Body() dto: CreateCatalogArticleDto) {

@@ -11,6 +11,16 @@ export class CatalogService {
     private readonly repo: Repository<CatalogArticle>,
   ) {}
 
+  async findCategories(colocationId: string): Promise<string[]> {
+    const results = await this.repo
+      .createQueryBuilder('a')
+      .select('DISTINCT a.category', 'category')
+      .where('a.colocationId = :colocationId', { colocationId })
+      .orderBy('a.category', 'ASC')
+      .getRawMany();
+    return results.map((r) => r.category);
+  }
+
   findByColocation(colocationId: string): Promise<CatalogArticle[]> {
     return this.repo.find({
       where: { colocationId },

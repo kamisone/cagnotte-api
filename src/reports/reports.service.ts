@@ -162,7 +162,20 @@ export class ReportsService {
     await this.tagRepository.delete(id);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, userId: string): Promise<void> {
+    const report = await this.reportRepository.findOne({ where: { id } });
+    if (!report) throw new NotFoundException('Report not found');
+
+    const isCreator = report.userId === userId;
+    const membership = await this.memberRepository.findOne({
+      where: { colocationId: report.colocationId, userId },
+    });
+    const isAdmin = membership?.role === 'admin';
+
+    if (!isCreator && !isAdmin) {
+      throw new ForbiddenException('Only the creator or an admin can delete this report');
+    }
+
     await this.commentRepository.delete({ reportId: id });
     await this.reportRepository.delete(id);
   }

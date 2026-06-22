@@ -63,8 +63,8 @@ export class ReportsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.reportsService.remove(id);
+  remove(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.reportsService.remove(id, user.id);
   }
 
   @Get('tags/:colocationId')

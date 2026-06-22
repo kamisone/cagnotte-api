@@ -11,6 +11,7 @@ import { CreateTagDto } from './dto/create-tag.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ReportsService {
@@ -25,10 +26,12 @@ export class ReportsService {
     private readonly memberRepository: Repository<ColocationMember>,
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
+    private readonly usersService: UsersService,
   ) {}
 
   async findByColocation(
     colocationId: string,
+    requesterId: string,
     filters?: { tag?: string },
   ) {
     const qb = this.reportRepository
@@ -51,7 +54,18 @@ export class ReportsService {
     }
 
     const reports = await qb.getMany();
-    return Promise.all(reports.map((r) => this.withSignedPhotoUrls(r)));
+    const requester = await this.usersService.findById(requesterId);
+    const isAdmin = requester?.isAdmin === true;
+
+    return Promise.all(
+      reports.map(async (r) => {
+        const signed = await this.withSignedPhotoUrls(r);
+        if (!isAdmin && r.userId !== requesterId) {
+          this.anonymizeUser(signed);
+        }
+        return signed;
+      }),
+    );
   }
 
   async create(userId: string, dto: CreateReportDto): Promise<Report> {
@@ -103,7 +117,7 @@ export class ReportsService {
     return this.withSignedPhotoUrls(updated);
   }
 
-  async findOneWithComments(id: string) {
+  async findOneWithComments(id: string, requesterId: string) {
     const report = await this.reportRepository.findOne({
       where: { id },
       relations: ['comments', 'comments.user'],
@@ -115,7 +129,15 @@ export class ReportsService {
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
 
-    return this.withSignedPhotoUrls(report);
+    const signed = await this.withSignedPhotoUrls(report);
+    const requester = await this.usersService.findById(requesterId);
+    const isAdmin = requester?.isAdmin === true;
+
+    if (!isAdmin && report.userId !== requesterId) {
+      this.anonymizeUser(signed);
+    }
+
+    return signed;
   }
 
   async addComment(
@@ -178,6 +200,17 @@ export class ReportsService {
 
     await this.commentRepository.delete({ reportId: id });
     await this.reportRepository.delete(id);
+  }
+
+  private anonymizeUser(report: Report): void {
+    report.user = {
+      ...report.user,
+      id: 'anonymous',
+      name: 'Anonyme',
+      email: '',
+      colorHex: '#8A8275',
+      initial: '?',
+    };
   }
 
   private async withSignedPhotoUrls(report: Report): Promise<Report> {

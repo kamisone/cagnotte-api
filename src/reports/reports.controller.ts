@@ -27,10 +27,13 @@ export class ReportsController {
 
   @Get(':colocationId')
   findByColocation(
+    @CurrentUser() user: any,
     @Param('colocationId') colocationId: string,
     @Query('tag') tag?: string,
   ) {
-    return this.reportsService.findByColocation(colocationId, { tag });
+    return this.reportsService.findByColocation(colocationId, user.id, {
+      tag,
+    });
   }
 
   @Post()
@@ -48,8 +51,8 @@ export class ReportsController {
   }
 
   @Get(':id/detail')
-  findOne(@Param('id') id: string) {
-    return this.reportsService.findOneWithComments(id);
+  findOne(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.reportsService.findOneWithComments(id, user.id);
   }
 
   @Post(':id/comments')

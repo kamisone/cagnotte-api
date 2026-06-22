@@ -5,13 +5,7 @@ const CreateReportSchema = z.object({
   colocationId: z.string().uuid(),
   title: z.string().min(1),
   description: z.string().optional(),
-  category: z.enum([
-    'cleaning',
-    'safety',
-    'maintenance',
-    'information',
-    'other',
-  ]),
+  tags: z.array(z.string()).optional(),
   photoUrls: z.array(z.string()).optional(),
 });
 

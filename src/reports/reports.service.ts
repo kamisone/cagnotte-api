@@ -21,7 +21,7 @@ export class ReportsService {
 
   async findByColocation(
     colocationId: string,
-    filters?: { status?: string; category?: string },
+    filters?: { tag?: string },
   ) {
     const qb = this.reportRepository
       .createQueryBuilder('r')
@@ -38,11 +38,8 @@ export class ReportsService {
       .where('r.colocationId = :colocationId', { colocationId })
       .orderBy('r.createdAt', 'DESC');
 
-    if (filters?.status) {
-      qb.andWhere('r.status = :status', { status: filters.status });
-    }
-    if (filters?.category) {
-      qb.andWhere('r.category = :category', { category: filters.category });
+    if (filters?.tag) {
+      qb.andWhere('r.tags LIKE :tag', { tag: `%${filters.tag}%` });
     }
 
     const reports = await qb.getMany();
@@ -53,7 +50,7 @@ export class ReportsService {
     const report = this.reportRepository.create({
       title: dto.title,
       description: dto.description ?? null,
-      category: dto.category,
+      tags: dto.tags ?? null,
       photoUrls: dto.photoUrls ?? null,
       userId,
       colocationId: dto.colocationId,
@@ -82,38 +79,11 @@ export class ReportsService {
     if (!report) throw new NotFoundException('Report not found');
 
     report.comments.sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
 
     return this.withSignedPhotoUrls(report);
-  }
-
-  async updateStatus(
-    id: string,
-    userId: string,
-    status: string,
-  ): Promise<Report> {
-    const report = await this.reportRepository.findOne({ where: { id } });
-    if (!report) throw new NotFoundException('Report not found');
-
-    report.status = status;
-    const saved = await this.reportRepository.save(report);
-
-    const notifType =
-      status === 'resolved' ? 'report_resolved' : 'report_updated';
-    const message =
-      status === 'resolved'
-        ? `Signalement resolu : ${report.title}`
-        : `Signalement mis a jour : ${report.title}`;
-
-    await this.notificationsService.createForAllMembers(
-      report.colocationId,
-      notifType,
-      message,
-      userId,
-    );
-
-    return saved;
   }
 
   async addComment(
@@ -141,6 +111,11 @@ export class ReportsService {
     );
 
     return this.commentRepository.findOneOrFail({ where: { id: saved.id } });
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.commentRepository.delete({ reportId: id });
+    await this.reportRepository.delete(id);
   }
 
   private async withSignedPhotoUrls(report: Report): Promise<Report> {

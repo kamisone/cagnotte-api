@@ -2,15 +2,16 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
-import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 import { CreateReportCommentDto } from './dto/create-report-comment.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -23,13 +24,9 @@ export class ReportsController {
   @Get(':colocationId')
   findByColocation(
     @Param('colocationId') colocationId: string,
-    @Query('status') status?: string,
-    @Query('category') category?: string,
+    @Query('tag') tag?: string,
   ) {
-    return this.reportsService.findByColocation(colocationId, {
-      status,
-      category,
-    });
+    return this.reportsService.findByColocation(colocationId, { tag });
   }
 
   @Post()
@@ -42,15 +39,6 @@ export class ReportsController {
     return this.reportsService.findOneWithComments(id);
   }
 
-  @Patch(':id/status')
-  updateStatus(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-    @Body() dto: UpdateReportStatusDto,
-  ) {
-    return this.reportsService.updateStatus(id, user.id, dto.status);
-  }
-
   @Post(':id/comments')
   addComment(
     @CurrentUser() user: any,
@@ -58,5 +46,11 @@ export class ReportsController {
     @Body() dto: CreateReportCommentDto,
   ) {
     return this.reportsService.addComment(id, user.id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id') id: string) {
+    return this.reportsService.remove(id);
   }
 }

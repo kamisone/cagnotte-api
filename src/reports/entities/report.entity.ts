@@ -23,11 +23,8 @@ export class Report {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ default: 'other' })
-  category: string;
-
-  @Column({ default: 'open' })
-  status: string;
+  @Column('simple-array', { nullable: true })
+  tags: string[];
 
   @Column('simple-array', { nullable: true })
   photoUrls: string[];

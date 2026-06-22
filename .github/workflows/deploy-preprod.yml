@@ -75,7 +75,10 @@ jobs:
             --from-literal GCS_PRIVATE_KEY=${{ secrets.GCS_PRIVATE_KEY }} \
             --from-literal ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }} \
             --from-literal ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }} \
-            --from-literal REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            --from-literal REDIS_HOST=${{ secrets.REDIS_HOST }} \
+            --from-literal REDIS_PORT=${{ secrets.REDIS_PORT }} \
+            --from-literal REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+            --from-literal REDIS_DB=${{ secrets.REDIS_DB }}
             kubectl apply -f /srv/k8s/api
             minikube addons enable ingress
             echo ${{ secrets.SERVER_SECOND_USER_PASSWORD }} | sudo -S systemctl restart nginx

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -12,6 +13,7 @@ import { RotationsModule } from './rotations/rotations.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { StorageModule } from './storage/storage.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -29,6 +31,15 @@ import { CatalogModule } from './catalog/catalog.module';
         synchronize: true,
       }),
     }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('REDIS_HOST') || 'localhost',
+          port: config.get<number>('REDIS_PORT') || 6379,
+        },
+      }),
+    }),
     UsersModule,
     AuthModule,
     ColocationsModule,
@@ -38,6 +49,7 @@ import { CatalogModule } from './catalog/catalog.module';
     NotificationsModule,
     StorageModule,
     CatalogModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

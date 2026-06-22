@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: api-deployment
 spec:
-  selector: 
+  selector:
     matchLabels:
       component: api
   template:
@@ -28,17 +28,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: api-envs
-                  key: NODE_ENV 
-            - name:  API_PORT
+                  key: NODE_ENV
+            - name: API_PORT
               valueFrom:
                 secretKeyRef:
                   name: api-envs
-                  key: API_PORT 
+                  key: API_PORT
             - name: APP_URL
               valueFrom:
                 secretKeyRef:
                   name: api-envs
-                  key: APP_URL 
+                  key: APP_URL
             - name: TYPEORM_HOST
               valueFrom:
                 secretKeyRef:
@@ -58,7 +58,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: api-envs
-                  key: TYPEORM_PASSWORD 
+                  key: TYPEORM_PASSWORD
             - name: TYPEORM_DATABASE
               valueFrom:
                 secretKeyRef:
@@ -84,11 +84,26 @@ spec:
                 secretKeyRef:
                   name: api-envs
                   key: ADMIN_PASSWORD
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: api-envs
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: api-envs
+                  key: REDIS_PORT
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: api-envs
                   key: REDIS_PASSWORD
+            - name: REDIS_DB
+              valueFrom:
+                secretKeyRef:
+                  name: api-envs
+                  key: REDIS_DB
             - name: GCS_BUCKET_NAME
               valueFrom:
                 secretKeyRef:
@@ -109,4 +124,3 @@ spec:
                 secretKeyRef:
                   name: api-envs
                   key: GCS_PRIVATE_KEY
-

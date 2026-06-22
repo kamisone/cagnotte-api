@@ -14,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { StorageModule } from './storage/storage.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { ReportsModule } from './reports/reports.module';
+import { MenageModule } from './menage/menage.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { ReportsModule } from './reports/reports.module';
     StorageModule,
     CatalogModule,
     ReportsModule,
+    MenageModule,
   ],
   controllers: [AppController],
   providers: [AppService],

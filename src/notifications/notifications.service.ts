@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Notification } from './entities/notification.entity';
@@ -21,6 +21,25 @@ export class NotificationsService {
     return this.notificationRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findSince(userId: string, lastId: string): Promise<Notification[]> {
+    const lastNotification = await this.notificationRepository.findOne({
+      where: { id: lastId },
+    });
+    if (!lastNotification) {
+      return this.notificationRepository.find({
+        where: { userId },
+        order: { createdAt: 'ASC' },
+      });
+    }
+    return this.notificationRepository.find({
+      where: {
+        userId,
+        createdAt: MoreThan(lastNotification.createdAt),
+      },
+      order: { createdAt: 'ASC' },
     });
   }
 

@@ -19,6 +19,11 @@ export class NotificationsController {
     return this.notificationsService.findByUser(user.id);
   }
 
+  @Get('since/:lastId')
+  findSince(@CurrentUser() user: any, @Param('lastId') lastId: string) {
+    return this.notificationsService.findSince(user.id, lastId);
+  }
+
   @Patch(':id/read')
   markRead(@Param('id') id: string) {
     return this.notificationsService.markRead(id);

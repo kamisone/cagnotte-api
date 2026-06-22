@@ -3,8 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Report } from './entities/report.entity';
 import { ReportComment } from './entities/report-comment.entity';
+import { ReportTag } from './entities/report-tag.entity';
 import { CreateReportDto } from './dto/create-report.dto';
 import { CreateReportCommentDto } from './dto/create-report-comment.dto';
+import { CreateTagDto } from './dto/create-tag.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 
@@ -15,6 +17,8 @@ export class ReportsService {
     private readonly reportRepository: Repository<Report>,
     @InjectRepository(ReportComment)
     private readonly commentRepository: Repository<ReportComment>,
+    @InjectRepository(ReportTag)
+    private readonly tagRepository: Repository<ReportTag>,
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
   ) {}
@@ -111,6 +115,23 @@ export class ReportsService {
     );
 
     return this.commentRepository.findOneOrFail({ where: { id: saved.id } });
+  }
+
+  async findTagsByColocation(colocationId: string): Promise<ReportTag[]> {
+    return this.tagRepository.find({ where: { colocationId }, order: { title: 'ASC' } });
+  }
+
+  async createTag(dto: CreateTagDto): Promise<ReportTag> {
+    const tag = this.tagRepository.create({
+      title: dto.title,
+      color: dto.color,
+      colocationId: dto.colocationId,
+    });
+    return this.tagRepository.save(tag);
+  }
+
+  async removeTag(id: string): Promise<void> {
+    await this.tagRepository.delete(id);
   }
 
   async remove(id: string): Promise<void> {

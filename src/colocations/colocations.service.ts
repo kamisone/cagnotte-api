@@ -160,6 +160,20 @@ export class ColocationsService {
     await this.memberRepository.remove(targetMembership);
   }
 
+  async toggleMemberActive(colocationId: string, userId: string) {
+    const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
+    if (!colocation) throw new NotFoundException('Colocation not found');
+
+    const disabled = colocation.disabledMembers ?? [];
+    if (disabled.includes(userId)) {
+      colocation.disabledMembers = disabled.filter((id) => id !== userId);
+    } else {
+      colocation.disabledMembers = [...disabled, userId];
+    }
+    await this.colocationRepository.save(colocation);
+    return { userId, isDisabled: colocation.disabledMembers.includes(userId) };
+  }
+
   async setPurchaseOrder(
     colocationId: string,
     userIds: string[],

@@ -26,6 +26,9 @@ export class Colocation {
   @Column({ default: 0 })
   currentPurchaserIndex: number;
 
+  @Column('simple-array', { nullable: true })
+  disabledMembers: string[];
+
   @CreateDateColumn()
   createdAt: Date;
 

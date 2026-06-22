@@ -80,4 +80,13 @@ export class ColocationsController {
   ) {
     return this.colocationsService.setPurchaseOrder(id, body.userIds);
   }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch(':id/members/:userId/toggle-active')
+  toggleMemberActive(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.colocationsService.toggleMemberActive(id, userId);
+  }
 }

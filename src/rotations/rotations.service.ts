@@ -26,14 +26,17 @@ export class RotationsService {
     const order = colocation.purchaseOrder;
     if (!order || order.length === 0) return [];
 
+    const disabled = colocation.disabledMembers ?? [];
     const users = await this.userRepository.find({ where: { id: In(order) } });
     const userMap = new Map(users.map((u) => [u.id, u]));
     const currentIndex = colocation.currentPurchaserIndex % order.length;
 
     return order.map((userId, i) => {
       const user = userMap.get(userId);
+      const isDisabled = disabled.includes(userId);
       let status: string;
-      if (i === currentIndex) status = 'current';
+      if (isDisabled) status = 'disabled';
+      else if (i === currentIndex) status = 'current';
       else if (i < currentIndex) status = 'completed';
       else status = 'upcoming';
 
@@ -41,6 +44,7 @@ export class RotationsService {
         id: `${colocationId}-${i}`,
         orderIndex: i,
         status,
+        isDisabled,
         weekStart: null,
         weekEnd: null,
         user: user
@@ -93,16 +97,35 @@ export class RotationsService {
     const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
     if (!colocation?.purchaseOrder?.length) return;
 
-    colocation.currentPurchaserIndex =
-      (colocation.currentPurchaserIndex + 1) % colocation.purchaseOrder.length;
+    const disabled = colocation.disabledMembers ?? [];
+    const order = colocation.purchaseOrder;
+    let nextIndex = (colocation.currentPurchaserIndex + 1) % order.length;
+
+    // Skip disabled members (max one full loop to avoid infinite loop)
+    for (let i = 0; i < order.length; i++) {
+      if (!disabled.includes(order[nextIndex])) break;
+      nextIndex = (nextIndex + 1) % order.length;
+    }
+
+    colocation.currentPurchaserIndex = nextIndex;
     await this.colocationRepository.save(colocation);
   }
 
   async getCurrentPurchaserId(colocationId: string): Promise<string | null> {
     const colocation = await this.colocationRepository.findOneBy({ id: colocationId });
     if (!colocation?.purchaseOrder?.length) return null;
-    const index = colocation.currentPurchaserIndex % colocation.purchaseOrder.length;
-    return colocation.purchaseOrder[index];
+
+    const disabled = colocation.disabledMembers ?? [];
+    const order = colocation.purchaseOrder;
+    let index = colocation.currentPurchaserIndex % order.length;
+
+    // If current is disabled, find the next active one
+    for (let i = 0; i < order.length; i++) {
+      if (!disabled.includes(order[index])) return order[index];
+      index = (index + 1) % order.length;
+    }
+
+    return null;
   }
 
   async swap(myRotationId: string, theirRotationId: string) {

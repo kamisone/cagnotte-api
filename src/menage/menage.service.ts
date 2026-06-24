@@ -2,11 +2,13 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { MenageEntry } from './entities/menage-entry.entity';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
+import { Colocation } from '../colocations/entities/colocation.entity';
 
 @Injectable()
 export class MenageService {
@@ -15,6 +17,8 @@ export class MenageService {
     private readonly entryRepository: Repository<MenageEntry>,
     @InjectRepository(ColocationMember)
     private readonly memberRepository: Repository<ColocationMember>,
+    @InjectRepository(Colocation)
+    private readonly colocationRepository: Repository<Colocation>,
   ) {}
 
   private getWeekStart(date: Date = new Date()): string {
@@ -34,15 +38,17 @@ export class MenageService {
 
   async getCurrentWeek(colocationId: string) {
     const weekStart = this.getWeekStart();
-    const entries = await this.entryRepository.find({
-      where: { colocationId, weekStart },
-      order: { createdAt: 'ASC' },
-    });
-
-    const members = await this.memberRepository.find({
-      where: { colocationId },
-      relations: ['user'],
-    });
+    const [entries, members, colocation] = await Promise.all([
+      this.entryRepository.find({
+        where: { colocationId, weekStart },
+        order: { createdAt: 'ASC' },
+      }),
+      this.memberRepository.find({
+        where: { colocationId },
+        relations: ['user'],
+      }),
+      this.colocationRepository.findOne({ where: { id: colocationId } }),
+    ]);
 
     const doneUserIds = new Set(entries.map((e) => e.userId));
 
@@ -70,10 +76,21 @@ export class MenageService {
       totalMembers: members.length,
       totalDone: entries.length,
       todayTakenBy: todayEntry?.userId ?? null,
+      taskDescription: colocation?.menageTaskDescription ?? null,
     };
   }
 
+  async updateTaskDescription(colocationId: string, description: string) {
+    await this.colocationRepository.update(
+      { id: colocationId },
+      { menageTaskDescription: description || null },
+    );
+  }
+
   async markDone(colocationId: string, userId: string, comment?: string) {
+    if (comment && comment.length > 50) {
+      throw new BadRequestException('Le commentaire ne peut pas dépasser 50 caractères');
+    }
     const weekStart = this.getWeekStart();
 
     const existing = await this.entryRepository.findOne({

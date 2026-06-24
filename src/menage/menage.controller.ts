@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -39,5 +40,14 @@ export class MenageController {
     @Param('colocationId') colocationId: string,
   ) {
     return this.menageService.undoMark(colocationId, user.id);
+  }
+
+  @Patch(':colocationId/task-description')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  updateTaskDescription(
+    @Param('colocationId') colocationId: string,
+    @Body() body: { description: string },
+  ) {
+    return this.menageService.updateTaskDescription(colocationId, body.description);
   }
 }

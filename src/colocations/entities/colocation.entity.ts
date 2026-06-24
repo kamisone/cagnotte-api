@@ -32,6 +32,9 @@ export class Colocation {
   @Column({ default: true })
   notificationsEnabled: boolean;
 
+  @Column({ type: 'text', nullable: true, default: null })
+  menageTaskDescription: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

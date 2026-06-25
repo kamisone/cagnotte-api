@@ -83,12 +83,7 @@ export class ReportsService {
       where: { id: saved.id },
     });
 
-    await this.notificationsService.createForAllMembers(
-      dto.colocationId,
-      'report_created',
-      `Nouveau signalement : ${dto.title}`,
-      userId,
-    );
+    await this.notificationsService.notifyReportCreated(dto.colocationId, dto.title, userId, saved.id);
 
     return this.withSignedPhotoUrls(hydrated);
   }
@@ -157,12 +152,7 @@ export class ReportsService {
     });
     const saved = await this.commentRepository.save(comment);
 
-    await this.notificationsService.createForAllMembers(
-      report.colocationId,
-      'report_commented',
-      `Nouveau commentaire sur : ${report.title}`,
-      userId,
-    );
+    await this.notificationsService.notifyCommentAdded(report.colocationId, report.title, userId, reportId);
 
     return this.commentRepository.findOneOrFail({ where: { id: saved.id } });
   }

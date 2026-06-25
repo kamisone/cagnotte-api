@@ -59,12 +59,7 @@ export class ReceiptsService {
     // Check spending gap between tenants
     await this.checkSpendingGap(dto.colocationId);
 
-    await this.notificationsService.createForAllMembers(
-      dto.colocationId,
-      'receipt_added',
-      `Un nouveau ticket de caisse a été ajouté (${dto.store}).`,
-      userId,
-    );
+    await this.notificationsService.notifyReceiptAdded(dto.colocationId, dto.store, userId);
 
     return this.withSignedPhotoUrl(hydrated);
   }

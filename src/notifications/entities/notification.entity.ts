@@ -16,8 +16,14 @@ export class Notification {
   @Column()
   type: string;
 
+  @Column({ nullable: true })
+  title: string;
+
   @Column()
   message: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  data: Record<string, string>;
 
   @Column({ default: false })
   isRead: boolean;

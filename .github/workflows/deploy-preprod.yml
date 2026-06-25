@@ -78,6 +78,7 @@ jobs:
             --from-literal REDIS_HOST=${{ secrets.REDIS_HOST }} \
             --from-literal REDIS_PORT=${{ secrets.REDIS_PORT }} \
             --from-literal REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+            --from-literal FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }} \
             --from-literal REDIS_DB=${{ secrets.REDIS_DB }}
             kubectl apply -f /srv/k8s/api
             minikube addons enable ingress

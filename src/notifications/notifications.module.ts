@@ -4,15 +4,18 @@ import { BullModule } from '@nestjs/bullmq';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Notification } from './entities/notification.entity';
+import { Device } from './entities/device.entity';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationProcessor } from './notification.processor';
 import { NotificationGateway } from './notification.gateway';
+import { FirebaseService } from './firebase.service';
+import { DeviceService } from './device.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, ColocationMember]),
+    TypeOrmModule.forFeature([Notification, Device, ColocationMember]),
     BullModule.registerQueue({ name: 'notifications' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -23,7 +26,13 @@ import { NotificationGateway } from './notification.gateway';
     }),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationProcessor, NotificationGateway],
+  providers: [
+    NotificationsService,
+    NotificationProcessor,
+    NotificationGateway,
+    FirebaseService,
+    DeviceService,
+  ],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

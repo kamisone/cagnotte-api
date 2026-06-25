@@ -124,3 +124,8 @@ spec:
                 secretKeyRef:
                   name: api-envs
                   key: GCS_PRIVATE_KEY
+            - name: FIREBASE_SERVICE_ACCOUNT_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: api-envs
+                  key: FIREBASE_SERVICE_ACCOUNT_JSON

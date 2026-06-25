@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { RotationsService } from '../rotations/rotations.service';
 import { ShoppingService } from '../shopping/shopping.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ReceiptsService {
@@ -23,6 +24,7 @@ export class ReceiptsService {
     private readonly storageService: StorageService,
     private readonly rotationsService: RotationsService,
     private readonly shoppingService: ShoppingService,
+    private readonly usersService: UsersService,
   ) {}
 
   async create(userId: string, dto: CreateReceiptDto): Promise<Receipt> {
@@ -52,6 +54,13 @@ export class ReceiptsService {
 
     if (currentPurchaserId) {
       await this.rotationsService.advancePurchaser(dto.colocationId);
+      const nextId = await this.rotationsService.getCurrentPurchaserId(dto.colocationId);
+      if (nextId) {
+        const nextUser = await this.usersService.findById(nextId);
+        if (nextUser) {
+          await this.notificationsService.notifyTurnStarted(dto.colocationId, nextUser.name, nextId);
+        }
+      }
     }
 
     await this.shoppingService.clearByColocation(dto.colocationId);

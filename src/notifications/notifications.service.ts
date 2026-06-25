@@ -190,6 +190,18 @@ export class NotificationsService {
     });
   }
 
+  async notifyMemberJoined(colocationId: string, userName: string, newUserId: string): Promise<void> {
+    await this.send({
+      colocationId,
+      type: NotificationType.MEMBER_JOINED,
+      title: 'Nouveau colocataire',
+      message: `${userName} a rejoint la colocation.`,
+      actorId: newUserId,
+      excludeUserId: newUserId,
+      data: { userId: newUserId },
+    });
+  }
+
   async sendAnnouncement(colocationId: string, message: string, actorId: string): Promise<void> {
     await this.send({
       colocationId,

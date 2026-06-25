@@ -15,6 +15,7 @@ import { UpdateColocationDto } from './dto/update-colocation.dto';
 import { UsersService } from '../users/users.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { AuthService } from '../auth/auth.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ColocationsService {
@@ -25,6 +26,7 @@ export class ColocationsService {
     private readonly memberRepository: Repository<ColocationMember>,
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private generateInviteCode(): string {
@@ -108,6 +110,8 @@ export class ColocationsService {
       colocation.purchaseOrder = [...colocation.purchaseOrder, user.id];
       await this.colocationRepository.save(colocation);
     }
+
+    await this.notificationsService.notifyMemberJoined(colocation.id, 'Locataire', user.id);
 
     return this.authService.generateTokens(user.id, guestEmail);
   }
@@ -213,6 +217,15 @@ export class ColocationsService {
     }
 
     await this.colocationRepository.save(colocation);
+
+    const user = await this.usersService.findById(userId);
+    const userName = user?.name ?? 'Un membre';
+    if (isCurrentlyDisabled) {
+      await this.notificationsService.notifyTenantReactivated(colocationId, userName, userId);
+    } else {
+      await this.notificationsService.notifyTenantDisabled(colocationId, userName, userId);
+    }
+
     return { userId, isDisabled: !isCurrentlyDisabled };
   }
 
@@ -283,6 +296,8 @@ export class ColocationsService {
       colocation.purchaseOrder = [...colocation.purchaseOrder, user.id];
       await this.colocationRepository.save(colocation);
     }
+
+    await this.notificationsService.notifyMemberJoined(colocationId, user.name, user.id);
 
     const { password, refreshToken, ...profile } = user;
     return {

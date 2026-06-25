@@ -6,12 +6,14 @@ import { ColocationsService } from './colocations.service';
 import { ColocationsController } from './colocations.controller';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Colocation, ColocationMember]),
     UsersModule,
     AuthModule,
+    NotificationsModule,
   ],
   controllers: [ColocationsController],
   providers: [ColocationsService],

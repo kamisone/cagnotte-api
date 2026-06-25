@@ -108,7 +108,13 @@ export class ReportsService {
     if (dto.photoUrls !== undefined) report.photoUrls = dto.photoUrls;
 
     await this.reportRepository.save(report);
-    const updated = await this.reportRepository.findOneOrFail({ where: { id } });
+    const updated = await this.reportRepository.findOneOrFail({
+      where: { id },
+      relations: ['comments', 'comments.user'],
+    });
+
+    await this.notificationsService.notifyReportUpdated(report.colocationId, report.title, userId, id);
+
     return this.withSignedPhotoUrls(updated);
   }
 

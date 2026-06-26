@@ -6,6 +6,8 @@ import { Queue } from 'bullmq';
 import { Notification } from './entities/notification.entity';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
 import { NotificationType } from './constants/notification-types';
+import { FirebaseService } from './firebase.service';
+import { DeviceService } from './device.service';
 
 export interface SendNotificationOptions {
   colocationId: string;
@@ -26,6 +28,8 @@ export class NotificationsService {
     private readonly memberRepository: Repository<ColocationMember>,
     @InjectQueue('notifications')
     private readonly notificationQueue: Queue,
+    private readonly firebase: FirebaseService,
+    private readonly deviceService: DeviceService,
   ) {}
 
   async findByUser(userId: string): Promise<Notification[]> {
@@ -66,7 +70,7 @@ export class NotificationsService {
         backoff: { type: 'exponential', delay: 1000 },
       });
     } catch {
-      // Fallback to direct DB insert if Redis is unavailable
+      // Fallback: Redis unavailable — write to DB and push FCM directly
       const members = await this.memberRepository.find({ where: { colocationId: options.colocationId } });
       const targets = options.excludeUserId
         ? members.filter((m) => m.userId !== options.excludeUserId)
@@ -83,6 +87,21 @@ export class NotificationsService {
         }),
       );
       await this.notificationRepository.save(notifications);
+
+      if (this.firebase.isReady && targets.length > 0) {
+        const userIds = targets.map((m) => m.userId);
+        const tokens = await this.deviceService.getActiveTokensForUsers(userIds);
+        if (tokens.length > 0) {
+          const { staleTokens } = await this.firebase.sendMulticast(
+            tokens,
+            { title: options.title, body: options.message },
+            options.data ?? {},
+          );
+          if (staleTokens.length > 0) {
+            await this.deviceService.deactivateStaleTokens(staleTokens);
+          }
+        }
+      }
     }
   }
 

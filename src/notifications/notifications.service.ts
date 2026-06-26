@@ -122,6 +122,7 @@ export class NotificationsService {
       title: 'Nouveau ticket de caisse',
       message: `Un ticket de caisse a été ajouté (${store}).`,
       actorId,
+      excludeUserId: actorId,
       data: { store },
     });
   }
@@ -133,6 +134,7 @@ export class NotificationsService {
       title: 'Nouveau signalement',
       message: `Nouveau signalement : ${reportTitle}`,
       actorId,
+      excludeUserId: actorId,
       data: { reportId, screen: 'report_detail' },
     });
   }
@@ -144,6 +146,7 @@ export class NotificationsService {
       title: 'Signalement mis à jour',
       message: `Le signalement "${reportTitle}" a été mis à jour.`,
       actorId,
+      excludeUserId: actorId,
       data: { reportId, screen: 'report_detail' },
     });
   }
@@ -155,6 +158,7 @@ export class NotificationsService {
       title: 'Nouveau commentaire',
       message: `Nouveau commentaire sur : ${reportTitle}`,
       actorId,
+      excludeUserId: actorId,
       data: { reportId, screen: 'report_detail' },
     });
   }

@@ -72,10 +72,11 @@ export class FirebaseService implements OnModuleInit {
         msg.includes('registration-token-not-registered') ||
         msg.includes('invalid-registration-token')
       ) {
-        return false;
+        return false; // stale token — caller should deactivate it
       }
+      // Transient error (network, quota, etc.) — log but don't signal as stale
       this.logger.error(`FCM send failed: ${msg}`);
-      return false;
+      throw err;
     }
   }
 
@@ -100,7 +101,8 @@ export class FirebaseService implements OnModuleInit {
     for (const result of results) {
       if (result.status === 'fulfilled') {
         if (result.value.ok) successCount++;
-        else staleTokens.push(result.value.token);
+        else staleTokens.push(result.value.token); // ok === false means stale token
+        // (transient errors are rejected — not counted as stale)
       }
     }
 

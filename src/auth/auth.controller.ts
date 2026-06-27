@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, UseGuards, HttpCode, HttpStatus, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -7,6 +7,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { UpdateNameDto } from './dto/update-name.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../common/guards/admin.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from '../users/users.service';
 
@@ -20,6 +21,11 @@ export class AuthController {
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Post('register-admin')
+  async registerAdmin(@Body() dto: RegisterDto) {
+    return this.authService.register(dto, true);
   }
 
   @Post('login')
@@ -79,5 +85,23 @@ export class AuthController {
     }
     const { password, refreshToken, ...profile } = fullUser;
     return profile;
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch('users/:userId/toggle-admin')
+  async toggleAdmin(
+    @CurrentUser() currentUser: { id: string },
+    @Param('userId') userId: string,
+  ) {
+    if (userId === currentUser.id) {
+      throw new ForbiddenException('Cannot change your own admin status');
+    }
+    const target = await this.usersService.findById(userId);
+    if (!target) {
+      throw new NotFoundException('User not found');
+    }
+    const newValue = !target.isAdmin;
+    await this.usersService.update(userId, { isAdmin: newValue });
+    return { isAdmin: newValue };
   }
 }

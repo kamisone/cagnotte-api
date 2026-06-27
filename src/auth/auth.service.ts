@@ -27,7 +27,7 @@ export class AuthService {
     private readonly memberRepository: Repository<ColocationMember>,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, isAdmin = false) {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
       throw new ConflictException('Email already registered');
@@ -44,6 +44,7 @@ export class AuthService {
       phone: dto.phone,
       colorHex: dto.colorHex,
       initial,
+      isAdmin,
     });
 
     const { password, refreshToken, ...profile } = user;

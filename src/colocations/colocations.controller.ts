@@ -24,7 +24,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class ColocationsController {
   constructor(private readonly colocationsService: ColocationsService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Post()
   create(@CurrentUser() user: any, @Body() dto: CreateColocationDto) {
     return this.colocationsService.create(user.id, dto);

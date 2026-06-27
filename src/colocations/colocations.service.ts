@@ -186,6 +186,8 @@ export class ColocationsService {
         await this.colocationRepository.save(colocation);
       }
     }
+
+    await this.usersService.delete(targetUserId);
   }
 
   async toggleMemberActive(colocationId: string, userId: string) {

@@ -57,13 +57,21 @@ export class ReportsService {
     const requester = await this.usersService.findById(requesterId);
     const isAdmin = requester?.isAdmin === true;
 
+    const availableTags = await this.tagRepository.find({ where: { colocationId } });
+    const tagColorMap = new Map(availableTags.map((t) => [t.title, t.color]));
+
     return Promise.all(
       reports.map(async (r) => {
         const signed = await this.withSignedPhotoUrls(r);
         if (!isAdmin && r.userId !== requesterId) {
           this.anonymizeUser(signed);
         }
-        return signed;
+        const result = signed as any;
+        result.tagDetails = (r.tags ?? []).map((title) => ({
+          title,
+          color: tagColorMap.get(title) ?? null,
+        }));
+        return result;
       }),
     );
   }
@@ -138,7 +146,15 @@ export class ReportsService {
       this.anonymizeUser(signed);
     }
 
-    return signed;
+    const availableTags = await this.tagRepository.find({ where: { colocationId: report.colocationId } });
+    const tagColorMap = new Map(availableTags.map((t) => [t.title, t.color]));
+    const result = signed as any;
+    result.tagDetails = (report.tags ?? []).map((title) => ({
+      title,
+      color: tagColorMap.get(title) ?? null,
+    }));
+
+    return result;
   }
 
   async addComment(

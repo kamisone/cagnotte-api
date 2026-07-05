@@ -78,8 +78,11 @@ jobs:
             --from-literal REDIS_HOST=${{ secrets.REDIS_HOST }} \
             --from-literal REDIS_PORT=${{ secrets.REDIS_PORT }} \
             --from-literal REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+            --from-literal REDIS_DB=${{ secrets.REDIS_DB }} \
             --from-literal FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }} \
-            --from-literal REDIS_DB=${{ secrets.REDIS_DB }}
+            --from-literal SUPER_ADMIN_EMAIL=${{ secrets.SUPER_ADMIN_EMAIL }} \
+            --from-literal SUPER_ADMIN_PASSWORD=${{ secrets.SUPER_ADMIN_PASSWORD }} \
+            --from-literal SUPER_ADMIN_SECRET=${{ secrets.SUPER_ADMIN_SECRET }}
             kubectl apply -f /srv/k8s/api
             minikube addons enable ingress
             echo ${{ secrets.SERVER_SECOND_USER_PASSWORD }} | sudo -S systemctl restart nginx

@@ -32,11 +32,17 @@ export class User {
   @Column({ default: false })
   isAdmin: boolean;
 
+  @Column({ default: false })
+  isSuperAdmin: boolean;
+
   @Column({ default: true })
   profileCompleted: boolean;
 
   @Column({ nullable: true })
   refreshToken: string;
+
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  suspendedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

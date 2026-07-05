@@ -15,6 +15,7 @@ import { StorageModule } from './storage/storage.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { ReportsModule } from './reports/reports.module';
 import { MenageModule } from './menage/menage.module';
+import { SuperAdminModule } from './super-admin/super-admin.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { MenageModule } from './menage/menage.module';
     CatalogModule,
     ReportsModule,
     MenageModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

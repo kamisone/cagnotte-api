@@ -38,7 +38,7 @@ export class ColocationsController {
 
   @Post('join')
   join(@Body() dto: JoinColocationDto) {
-    return this.colocationsService.joinAsGuest(dto.inviteCode);
+    return this.colocationsService.joinAsGuest(dto);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -80,23 +80,27 @@ export class ColocationsService {
     };
   }
 
-  async joinAsGuest(inviteCode: string): Promise<{ accessToken: string; refreshToken: string }> {
-    const colocation = await this.colocationRepository.findOneBy({ inviteCode });
+  async joinAsGuest(dto: { inviteCode: string; name: string; email: string; password?: string }): Promise<{ accessToken: string; refreshToken: string; profileCompleted: boolean }> {
+    const colocation = await this.colocationRepository.findOneBy({ inviteCode: dto.inviteCode });
     if (!colocation) {
       throw new NotFoundException('Code d\'invitation invalide');
     }
 
-    const guestEmail = `guest-${crypto.randomUUID()}@cagnotte.local`;
-    const plainPassword = crypto.randomBytes(9).toString('base64url');
+    const existing = await this.usersService.findByEmail(dto.email);
+    if (existing) {
+      throw new ConflictException('Cet email est déjà utilisé');
+    }
+
+    const plainPassword = dto.password ?? crypto.randomBytes(9).toString('base64url');
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
     const user = await this.usersService.create({
-      email: guestEmail,
+      email: dto.email,
       password: hashedPassword,
-      name: 'Locataire',
-      initial: 'L',
+      name: dto.name,
+      initial: dto.name[0].toUpperCase(),
       colorHex: '#17A877',
-      profileCompleted: false,
+      profileCompleted: true,
     });
 
     const member = this.memberRepository.create({
@@ -111,9 +115,10 @@ export class ColocationsService {
       await this.colocationRepository.save(colocation);
     }
 
-    await this.notificationsService.notifyMemberJoined(colocation.id, 'Locataire', user.id);
+    await this.notificationsService.notifyMemberJoined(colocation.id, dto.name, user.id);
 
-    return this.authService.generateTokens(user.id, guestEmail);
+    const tokens = await this.authService.generateTokens(user.id, dto.email);
+    return { ...tokens, profileCompleted: true };
   }
 
   async getMembers(colocationId: string): Promise<ColocationMember[]> {

@@ -69,7 +69,8 @@ export class SuperAdminController {
     @Query('search') search?: string,
     @Query('role') role?: 'admin' | 'super_admin' | 'member',
     @Query('status') status?: 'active' | 'suspended',
-  ) { return this.superAdminService.getUsers(search, role, status); }
+    @Query('colocationId') colocationId?: string,
+  ) { return this.superAdminService.getUsers(search, role, status, colocationId); }
 
   @UseGuards(SuperAdminGuard)
   @Post('users/:id/suspend')

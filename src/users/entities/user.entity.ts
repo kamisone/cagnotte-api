@@ -44,6 +44,9 @@ export class User {
   @Column({ type: 'timestamp', nullable: true, default: null })
   suspendedAt: Date | null;
 
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  anonymizedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

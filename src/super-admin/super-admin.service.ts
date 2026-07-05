@@ -128,7 +128,7 @@ export class SuperAdminService {
   }
 
   // ─── Users ───────────────────────────────────────────────────────────────
-  async getUsers(search?: string, role?: 'admin' | 'super_admin' | 'member', status?: 'active' | 'suspended') {
+  async getUsers(search?: string, role?: 'admin' | 'super_admin' | 'member', status?: 'active' | 'suspended', colocationId?: string) {
     const [users, members] = await Promise.all([
       this.userRepo.find({ order: { createdAt: 'DESC' } }),
       this.memberRepo.find({ relations: ['colocation'] }),
@@ -152,8 +152,9 @@ export class SuperAdminService {
     else if (role === 'admin') result = result.filter(u => u.isAdmin && !u.isSuperAdmin);
     else if (role === 'member') result = result.filter(u => !u.isAdmin && !u.isSuperAdmin);
 
-    if (status === 'active') result = result.filter(u => !u.suspendedAt);
+    if (status === 'active') result = result.filter(u => !u.suspendedAt && !u.anonymizedAt);
     if (status === 'suspended') result = result.filter(u => !!u.suspendedAt);
+    if (colocationId) result = result.filter(u => u.colocation?.id === colocationId);
 
     return result;
   }
@@ -209,12 +210,14 @@ export class SuperAdminService {
   async suspendUser(id: string, actorId: string, actorName: string) {
     const user = await this.userRepo.findOneOrFail({ where: { id } });
     if (user.isSuperAdmin) throw new ForbiddenException('Cannot suspend a super-admin');
+    if (user.anonymizedAt) throw new ForbiddenException('User is anonymized');
     await this.userRepo.update(id, { suspendedAt: new Date() });
     await this.log(actorId, actorName, 'SUSPEND_USER', 'user', id, user.name);
   }
 
   async activateUser(id: string, actorId: string, actorName: string) {
     const user = await this.userRepo.findOneOrFail({ where: { id } });
+    if (user.anonymizedAt) throw new ForbiddenException('User is anonymized');
     await this.userRepo.update(id, { suspendedAt: null });
     await this.log(actorId, actorName, 'ACTIVATE_USER', 'user', id, user.name);
   }
@@ -238,6 +241,7 @@ export class SuperAdminService {
   async deleteUser(id: string, actorId: string, actorName: string) {
     const user = await this.userRepo.findOneOrFail({ where: { id } });
     if (user.isSuperAdmin) throw new ForbiddenException('Cannot delete a super-admin');
+    if (user.anonymizedAt) throw new ForbiddenException('User is already anonymized');
     await this.log(actorId, actorName, 'ANONYMIZE_USER', 'user', id, user.name);
 
     const memberships = await this.memberRepo.find({ where: { userId: id } });
@@ -267,7 +271,7 @@ export class SuperAdminService {
       refreshToken: null,
       isAdmin: false,
       profileCompleted: false,
-      suspendedAt: new Date(),
+      anonymizedAt: new Date(),
     });
   }
 

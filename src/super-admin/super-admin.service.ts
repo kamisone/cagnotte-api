@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
@@ -230,11 +232,43 @@ export class SuperAdminService {
   }
 
   // ─── Delete ──────────────────────────────────────────────────────────────
+  // Anonymizes rather than hard-deletes: the user keeps historical rows
+  // (receipts, reports, menage entries, audit logs, …) for record-keeping,
+  // but is stripped of all colocation memberships and can never log in again.
   async deleteUser(id: string, actorId: string, actorName: string) {
     const user = await this.userRepo.findOneOrFail({ where: { id } });
     if (user.isSuperAdmin) throw new ForbiddenException('Cannot delete a super-admin');
-    await this.log(actorId, actorName, 'DELETE_USER', 'user', id, user.name);
-    await this.userRepo.delete(id);
+    await this.log(actorId, actorName, 'ANONYMIZE_USER', 'user', id, user.name);
+
+    const memberships = await this.memberRepo.find({ where: { userId: id } });
+    for (const membership of memberships) {
+      const colocation = await this.colocationRepo.findOneBy({ id: membership.colocationId });
+      if (colocation?.purchaseOrder?.includes(id)) {
+        const removedIndex = colocation.purchaseOrder.indexOf(id);
+        colocation.purchaseOrder = colocation.purchaseOrder.filter((uid) => uid !== id);
+        colocation.disabledMembers = (colocation.disabledMembers ?? []).filter((uid) => uid !== id);
+        if (colocation.purchaseOrder.length > 0) {
+          if (removedIndex < colocation.currentPurchaserIndex) colocation.currentPurchaserIndex--;
+          colocation.currentPurchaserIndex = colocation.currentPurchaserIndex % colocation.purchaseOrder.length;
+        } else {
+          colocation.currentPurchaserIndex = 0;
+        }
+        await this.colocationRepo.save(colocation);
+      }
+    }
+    await this.memberRepo.delete({ userId: id });
+
+    const anonymizedPassword = await bcrypt.hash(randomUUID(), 10);
+    await this.userRepo.update(id, {
+      email: `deleted-${id}@anonymized.habizy.com`,
+      name: 'Utilisateur supprimé',
+      phone: null,
+      password: anonymizedPassword,
+      refreshToken: null,
+      isAdmin: false,
+      profileCompleted: false,
+      suspendedAt: new Date(),
+    });
   }
 
   async deleteColocation(id: string, actorId: string, actorName: string) {

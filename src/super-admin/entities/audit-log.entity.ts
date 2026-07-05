@@ -3,6 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeor
 export type AuditAction =
   | 'BOOTSTRAP'
   | 'DELETE_USER'
+  | 'ANONYMIZE_USER'
   | 'DELETE_COLOCATION'
   | 'SUSPEND_USER'
   | 'ACTIVATE_USER'

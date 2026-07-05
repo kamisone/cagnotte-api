@@ -10,10 +10,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { UsersService } from '../users/users.service';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
+import { Colocation } from '../colocations/entities/colocation.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ColocationMember]),
+    TypeOrmModule.forFeature([ColocationMember, Colocation]),
     UsersModule,
     PassportModule,
     JwtModule.registerAsync({

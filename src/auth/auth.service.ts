@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
+import { Colocation } from '../colocations/entities/colocation.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -25,6 +26,8 @@ export class AuthService {
     private readonly configService: ConfigService,
     @InjectRepository(ColocationMember)
     private readonly memberRepository: Repository<ColocationMember>,
+    @InjectRepository(Colocation)
+    private readonly colocationRepository: Repository<Colocation>,
   ) {}
 
   async register(dto: RegisterDto, isAdmin = false) {
@@ -99,9 +102,40 @@ export class AuthService {
     return tokens;
   }
 
+  // Anonymizes rather than hard-deletes: the account keeps historical rows
+  // (receipts, reports, menage entries, …) for the colocation's shared
+  // record-keeping, but is stripped of all membership and can never log in
+  // again. Mirrors SuperAdminService.deleteUser.
   async deleteAccount(userId: string): Promise<void> {
+    const memberships = await this.memberRepository.find({ where: { userId } });
+    for (const membership of memberships) {
+      const colocation = await this.colocationRepository.findOneBy({ id: membership.colocationId });
+      if (colocation?.purchaseOrder?.includes(userId)) {
+        const removedIndex = colocation.purchaseOrder.indexOf(userId);
+        colocation.purchaseOrder = colocation.purchaseOrder.filter((uid) => uid !== userId);
+        colocation.disabledMembers = (colocation.disabledMembers ?? []).filter((uid) => uid !== userId);
+        if (colocation.purchaseOrder.length > 0) {
+          if (removedIndex < colocation.currentPurchaserIndex) colocation.currentPurchaserIndex--;
+          colocation.currentPurchaserIndex = colocation.currentPurchaserIndex % colocation.purchaseOrder.length;
+        } else {
+          colocation.currentPurchaserIndex = 0;
+        }
+        await this.colocationRepository.save(colocation);
+      }
+    }
     await this.memberRepository.delete({ userId });
-    await this.usersService.delete(userId);
+
+    const anonymizedPassword = await bcrypt.hash(crypto.randomUUID(), 10);
+    await this.usersService.update(userId, {
+      email: `deleted-${userId}@anonymized.habizy.com`,
+      name: 'Utilisateur supprimé',
+      phone: null,
+      password: anonymizedPassword,
+      refreshToken: null,
+      isAdmin: false,
+      profileCompleted: false,
+      anonymizedAt: new Date(),
+    });
   }
 
   async completeProfile(userId: string, dto: CompleteProfileDto) {

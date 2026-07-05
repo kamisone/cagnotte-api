@@ -7,8 +7,14 @@ import { User } from '../users/entities/user.entity';
 import { Colocation } from '../colocations/entities/colocation.entity';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
 import { Receipt } from '../receipts/entities/receipt.entity';
+import { ReceiptItem } from '../receipts/entities/receipt-item.entity';
 import { Report } from '../reports/entities/report.entity';
+import { ReportTag } from '../reports/entities/report-tag.entity';
 import { Notification } from '../notifications/entities/notification.entity';
+import { ShoppingItem } from '../shopping/entities/shopping-item.entity';
+import { Rotation } from '../rotations/entities/rotation.entity';
+import { MenageEntry } from '../menage/entities/menage-entry.entity';
+import { CatalogArticle } from '../catalog/entities/catalog-article.entity';
 import { AuditLog, AuditAction } from './entities/audit-log.entity';
 
 @Injectable()
@@ -18,8 +24,14 @@ export class SuperAdminService {
     @InjectRepository(Colocation) private readonly colocationRepo: Repository<Colocation>,
     @InjectRepository(ColocationMember) private readonly memberRepo: Repository<ColocationMember>,
     @InjectRepository(Receipt) private readonly receiptRepo: Repository<Receipt>,
+    @InjectRepository(ReceiptItem) private readonly receiptItemRepo: Repository<ReceiptItem>,
     @InjectRepository(Report) private readonly reportRepo: Repository<Report>,
+    @InjectRepository(ReportTag) private readonly reportTagRepo: Repository<ReportTag>,
     @InjectRepository(Notification) private readonly notificationRepo: Repository<Notification>,
+    @InjectRepository(ShoppingItem) private readonly shoppingItemRepo: Repository<ShoppingItem>,
+    @InjectRepository(Rotation) private readonly rotationRepo: Repository<Rotation>,
+    @InjectRepository(MenageEntry) private readonly menageEntryRepo: Repository<MenageEntry>,
+    @InjectRepository(CatalogArticle) private readonly catalogArticleRepo: Repository<CatalogArticle>,
     @InjectRepository(AuditLog) private readonly auditRepo: Repository<AuditLog>,
   ) {}
 
@@ -275,9 +287,25 @@ export class SuperAdminService {
     });
   }
 
+  // Purges every row that FK-references this colocation before the colocation
+  // itself, since none of those relations cascade at the DB level.
   async deleteColocation(id: string, actorId: string, actorName: string) {
     const c = await this.colocationRepo.findOneOrFail({ where: { id } });
     await this.log(actorId, actorName, 'DELETE_COLOCATION', 'colocation', id, c.name);
+
+    await this.receiptItemRepo
+      .createQueryBuilder()
+      .delete()
+      .where(`"receiptId" IN (SELECT id FROM receipts WHERE "colocationId" = :id)`, { id })
+      .execute();
+    await this.receiptRepo.delete({ colocationId: id });
+    await this.shoppingItemRepo.delete({ colocationId: id });
+    await this.rotationRepo.delete({ colocationId: id });
+    await this.menageEntryRepo.delete({ colocationId: id });
+    await this.catalogArticleRepo.delete({ colocationId: id });
+    await this.reportTagRepo.delete({ colocationId: id });
+    await this.reportRepo.delete({ colocationId: id });
+    await this.notificationRepo.delete({ colocationId: id });
     await this.memberRepo.delete({ colocationId: id });
     await this.colocationRepo.delete(id);
   }

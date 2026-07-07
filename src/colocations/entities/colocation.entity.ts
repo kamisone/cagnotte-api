@@ -35,6 +35,9 @@ export class Colocation {
   @Column({ type: 'text', nullable: true, default: null })
   menageTaskDescription: string | null;
 
+  @Column({ default: 10 })
+  menageSubTaskLimit: number;
+
   @Column({ type: 'timestamp', nullable: true, default: null })
   suspendedAt: Date | null;
 

@@ -7,14 +7,22 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { MenageEntry } from './entities/menage-entry.entity';
+import { MenageSubTaskEntry } from './entities/menage-sub-task.entity';
 import { ColocationMember } from '../colocations/entities/colocation-member.entity';
 import { Colocation } from '../colocations/entities/colocation.entity';
+
+const DEFAULT_SUB_TASK_LIMIT = 10;
+const MIN_SUB_TASK_LIMIT = 1;
+const MAX_SUB_TASK_LIMIT = 50;
+const MAX_SUB_TASK_LENGTH = 60;
 
 @Injectable()
 export class MenageService {
   constructor(
     @InjectRepository(MenageEntry)
     private readonly entryRepository: Repository<MenageEntry>,
+    @InjectRepository(MenageSubTaskEntry)
+    private readonly subTaskRepository: Repository<MenageSubTaskEntry>,
     @InjectRepository(ColocationMember)
     private readonly memberRepository: Repository<ColocationMember>,
     @InjectRepository(Colocation)
@@ -38,8 +46,12 @@ export class MenageService {
 
   async getCurrentWeek(colocationId: string) {
     const weekStart = this.getWeekStart();
-    const [entries, members, colocation] = await Promise.all([
+    const [entries, subTasks, members, colocation] = await Promise.all([
       this.entryRepository.find({
+        where: { colocationId, weekStart },
+        order: { createdAt: 'ASC' },
+      }),
+      this.subTaskRepository.find({
         where: { colocationId, weekStart },
         order: { createdAt: 'ASC' },
       }),
@@ -59,6 +71,9 @@ export class MenageService {
 
     const board = members.map((m) => {
       const entry = entries.find((e) => e.userId === m.user.id);
+      const mySubTasks = subTasks
+        .filter((t) => t.userId === m.user.id)
+        .map((t) => ({ text: t.text, completedAt: t.createdAt.toISOString() }));
       return {
         userId: m.user.id,
         name: m.user.name,
@@ -67,6 +82,7 @@ export class MenageService {
         done: doneUserIds.has(m.user.id),
         doneAt: entry?.createdAt ?? null,
         comment: entry?.comment ?? null,
+        subTasks: mySubTasks.length > 0 ? mySubTasks : null,
       };
     });
 
@@ -77,6 +93,7 @@ export class MenageService {
       totalDone: entries.length,
       todayTakenBy: todayEntry?.userId ?? null,
       taskDescription: colocation?.menageTaskDescription ?? null,
+      subTaskLimit: colocation?.menageSubTaskLimit ?? DEFAULT_SUB_TASK_LIMIT,
     };
   }
 
@@ -85,6 +102,54 @@ export class MenageService {
       { id: colocationId },
       { menageTaskDescription: description || null },
     );
+  }
+
+  async updateSubTaskLimit(colocationId: string, limit: number) {
+    if (
+      !Number.isInteger(limit) ||
+      limit < MIN_SUB_TASK_LIMIT ||
+      limit > MAX_SUB_TASK_LIMIT
+    ) {
+      throw new BadRequestException(
+        `La limite doit être un nombre entier entre ${MIN_SUB_TASK_LIMIT} et ${MAX_SUB_TASK_LIMIT}`,
+      );
+    }
+    await this.colocationRepository.update(
+      { id: colocationId },
+      { menageSubTaskLimit: limit },
+    );
+  }
+
+  async addSubTask(colocationId: string, userId: string, text: string) {
+    const cleanText = (text ?? '').trim();
+    if (!cleanText) {
+      throw new BadRequestException('La tâche ne peut pas être vide');
+    }
+    if (cleanText.length > MAX_SUB_TASK_LENGTH) {
+      throw new BadRequestException(
+        `Une tâche ne peut pas dépasser ${MAX_SUB_TASK_LENGTH} caractères`,
+      );
+    }
+
+    const weekStart = this.getWeekStart();
+    const [colocation, existingCount] = await Promise.all([
+      this.colocationRepository.findOne({ where: { id: colocationId } }),
+      this.subTaskRepository.count({ where: { colocationId, userId, weekStart } }),
+    ]);
+    const limit = colocation?.menageSubTaskLimit ?? DEFAULT_SUB_TASK_LIMIT;
+    if (existingCount >= limit) {
+      throw new BadRequestException(
+        `Vous ne pouvez pas ajouter plus de ${limit} tâches`,
+      );
+    }
+
+    const subTask = this.subTaskRepository.create({
+      userId,
+      colocationId,
+      weekStart,
+      text: cleanText,
+    });
+    return this.subTaskRepository.save(subTask);
   }
 
   async markDone(colocationId: string, userId: string, comment?: string) {

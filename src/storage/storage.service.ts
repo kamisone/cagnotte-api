@@ -28,7 +28,7 @@ export class StorageService {
     });
 
     this.bucketName =
-      config.get<string>('GCS_BUCKET_NAME') ?? 'silomis_local';
+      config.get<string>('GCS_BUCKET_NAME') ?? 'habizy_local';
 
     this.logger.log(`Storage bucket: ${this.bucketName}`);
   }
@@ -69,7 +69,7 @@ export class StorageService {
   }
 
   // Extract the GCS object key from a stored public URL.
-  // e.g. "https://storage.googleapis.com/silomis_local/receipts/user/file.jpg"
+  // e.g. "https://storage.googleapis.com/habizy_local/receipts/user/file.jpg"
   //   → "receipts/user/file.jpg"
   extractKey(publicUrl: string): string {
     return publicUrl.replace(

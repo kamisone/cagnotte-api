@@ -26,7 +26,7 @@ export class StorageService {
           ? { client_email: clientEmail, private_key: privateKey }
           : undefined,
     });
-
+    
     this.bucketName =
       config.get<string>('GCS_BUCKET_NAME') ?? 'habizy_local';
 

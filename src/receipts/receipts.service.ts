@@ -138,7 +138,7 @@ export class ReceiptsService {
       .createQueryBuilder('ri')
       .innerJoin('ri.receipt', 'r')
       .select('ri.category', 'category')
-      .addSelect('SUM(ri.price * ri.quantity)', 'amount')
+      .addSelect('SUM(ri.price)', 'amount')
       .where('r.colocationId = :colocationId', { colocationId })
       .groupBy('ri.category')
       .getRawMany();
@@ -233,12 +233,12 @@ export class ReceiptsService {
       .innerJoin('ri.receipt', 'r')
       .select('ri.name', 'name')
       .addSelect('ri.category', 'category')
-      .addSelect('SUM(ri.price * ri.quantity)', 'totalAmount')
+      .addSelect('SUM(ri.price)', 'totalAmount')
       .addSelect('SUM(ri.quantity)', 'totalQuantity')
       .where('r.colocationId = :colocationId', { colocationId })
       .groupBy('ri.name')
       .addGroupBy('ri.category')
-      .orderBy('SUM(ri.price * ri.quantity)', 'DESC')
+      .orderBy('SUM(ri.price)', 'DESC')
       .getRawMany();
 
     return raw.map((row) => ({
